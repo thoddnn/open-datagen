@@ -1,0 +1,35 @@
+{
+    "default": {
+        "description": "Unstructured text prompt and completion.",
+        "prompt_structure": "",
+        "completion_structure": ""
+    },
+    "product-review": {
+        "description": "Structured prompt for product reviews.",
+        "prompt_structure": "Review of '{product_name}' from {brand}:",
+        "completion_structure": "{review_content}.\n\nRating: {rating}/5[END]",
+        "prompt_variables": {
+            "product_name": {"name": "Product name", "temperature":1, "max_tokens":256, "variation_nb":1, "note": "Dyson home products"},
+            "brand": {"name": "Brand", "temperature":1, "max_tokens":256, "variation_nb":1}
+        },
+        "completion_variables": {
+            "rating": {"name": "Rating", "temperature":1, "max_tokens":8, "type":"int", "min_value":0, "max_value":5},
+            "review_content": {"name": "Review content", "temperature":1, "max_tokens":128, "start_with":["It is bad. ", "It is awful. ", "It very bad. "]}
+        }
+    },
+    "blog-post": {
+        "description": "Structured prompt for product reviews.",
+        "prompt_structure": "Write an article about {topic}",
+        "completion_structure": "Title: {aritcle_title}[END TITLE]\n\n{article_introduction}[END INTRO]\n\n{article_content}[END CONTENT]\n\n{article_conclusion}[END]",
+        "prompt_variables": {
+            "topic": {"name": "Topic", "temperature":1, "max_tokens":256, "variation_nb":1}
+        },
+        "completion_variables": {
+            "aritcle_title": {"name": "Title", "temperature":1, "max_tokens":256},
+            "article_introduction": {"name": "Introduction", "temperature":1, "max_tokens":256},
+            "article_content": {"name": "Article content", "temperature":1, "max_tokens":256},
+            "article_conclusion": {"name": "Article conclusion", "temperature":1, "max_tokens":256}
+        }
+    }
+
+}

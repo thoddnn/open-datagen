@@ -1,0 +1,14 @@
+Given this JSON:
+"""
+{json}
+"""
+
+Write a list of {number_of_variation} diverse {variable} values for the '{variable}' field. 
+
+{note}
+
+{rag_content}
+
+Answer as a valid JSON like {{"variations":["XXX","AAAA", "ZZZZZ"]}}.
+
+{start_with}

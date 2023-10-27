@@ -1,0 +1,10 @@
+Write the {variable_name} for the given prompt. 
+
+{completion_type}
+
+#Given prompt#:
+{prompt}
+
+#{variable_name}#:
+
+{start_with}
