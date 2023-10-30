@@ -1,20 +1,15 @@
 {
-    "default": {
-        "description": "Unstructured text prompt and completion.",
-        "prompt_structure": "",
-        "completion_structure": ""
-    },
     "product-review": {
         "description": "Structured prompt for product reviews.",
-        "prompt_structure": "Review of '{product_name}' from {brand}:",
-        "completion_structure": "{review_content}.\n\nRating: {rating}/5[END]",
+        "prompt_structure": "Review of '{product_name}' made by {brand}:",
+        "completion_structure": "{short_review_content}.\n\nRating: {rating}/10[END]",
         "prompt_variables": {
-            "product_name": {"name": "Product name", "temperature":1, "max_tokens":256, "variation_nb":1, "note": "Dyson home products"},
-            "brand": {"name": "Brand", "temperature":1, "max_tokens":256, "variation_nb":1}
+            "product_name": {"name": "Product name", "temperature":1, "max_tokens":10, "variation_nb":5, "note": "It must be real-world Apple products"},
+            "brand": {"name": "Brand", "temperature":0.2, "max_tokens":10, "variation_nb":1}
         },
         "completion_variables": {
-            "rating": {"name": "Rating", "temperature":1, "max_tokens":8, "type":"int", "min_value":0, "max_value":5},
-            "review_content": {"name": "Review content", "temperature":1, "max_tokens":128, "start_with":["It is bad. ", "It is awful. ", "It very bad. "]}
+            "rating": {"name": "Rating", "temperature":1, "max_tokens":8, "type":"int", "min_value":0, "max_value":10},
+            "short_review_content": {"name": "Review content", "temperature":1, "max_tokens":256, "start_with":["It is bad. ", "It is awful. ", "It very bad. "]}
         }
     },
     "blog-post": {

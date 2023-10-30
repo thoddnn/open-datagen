@@ -1,0 +1,15 @@
+{context}
+
+Write a {variable_name} value. 
+
+{type_constraint}
+
+{note}
+
+{rag_content}
+
+{last_values}
+
+###{variable_name}###: 
+
+{start_with}

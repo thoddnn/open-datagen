@@ -13,7 +13,8 @@ from urllib.parse import quote
 import csv
 from tenacity import retry, stop_after_attempt, wait_exponential
 from re import findall
-
+from pydantic import BaseModel, validator, conint, constr
+from typing import Optional, Dict, List 
 
 load_dotenv()
 
@@ -212,8 +213,33 @@ def google_news_search(query:str, location:str):
     return json.loads(response.text)
 
 
+class Variable(BaseModel):
+    name: str
+    temperature: float
+    max_tokens: int
+    variation_nb: int
+    type: Optional[str]  # like 'int' in your example
+    min_value: Optional[int]  # constrain integer to be >= 0
+    max_value: Optional[int]
+    start_with: Optional[List[str]]
+    note: Optional[str]
+    rag_content: Optional[str]
+
+    # Validate the type value if it's provided
+    @validator('type', pre=True, always=True)
+    def check_type(cls, value):
+        if value and value not in ['int', 'str']:
+            raise ValueError(f'Invalid type: {value}')
+        return value
+
+class Template(BaseModel):
+    description: str
+    prompt: str
+    completion: str
+    prompt_variables: Optional[Dict[str, Variable]]
+    completion_variables: Optional[Dict[str, Variable]]
+
 class TemplateName(Enum):
-    DEFAULT = "default"
     PRODUCT_REVIEW = "product-review"
     BLOG_POST = "blog-post"
     # Add other templates as needed
@@ -244,8 +270,8 @@ class TemplateManager:
         if not template:
             raise ValueError(f"Template {template_name} not found!")
         
-        prompt = template['prompt_structure'].format(**prompt_data)
-        completion = template['completion_structure'].format(**completion_data)
+        prompt = template['prompt'].format(**prompt_data)
+        completion = template['completion'].format(**completion_data)
         
         return prompt, completion
 
@@ -284,43 +310,81 @@ def process_variations(index, variables_list, variables_dict, template):
 
         process_variations(index + 1, variables_list, variables_dict, template=template)
 
+def generate_context_from_json(data, stop_field=None):
+    if stop_field and list(data.keys())[0] == stop_field:
+        return ""
+
+    output = "Given these values\n"
+    
+    for key, value in data.items():
+        if key == stop_field:
+            break
+        output += f"#{key} value#\n'''{value}\n'''\n"
+    
+    return output
+
 
 def generate_variation(variable_name:str, variables_dict:dict, template:dict):
     
-    temp_variation_prompt = load_file(path="files/variations.txt")
+    initial_variation_prompt = load_file(path="files/variations_v2.txt")
 
-    max_tokens = int(template["prompt_variables"][variable_name]["max_tokens"])
-    temperature = template["prompt_variables"][variable_name]["temperature"]
-    number_of_variation = int(template["prompt_variables"][variable_name]["variation_nb"])
-    name = str(template["prompt_variables"][variable_name]["name"])
+    temp_variation_prompt = initial_variation_prompt
+
+    # Sample JSON
+    context = generate_context_from_json(variables_dict, variable_name)
+
+    max_tokens = int(template.prompt_variables[variable_name].max_tokens)
+    temperature = template.prompt_variables[variable_name].temperature
+    number_of_variation = template.prompt_variables[variable_name].variation_nb
+    name = template.prompt_variables[variable_name].name
     
-    note = template["prompt_variables"][variable_name].get("note", "") 
+    note = template.prompt_variables[variable_name].note
 
-    start_with = template["prompt_variables"][variable_name].get("start_with", "") 
+    start_with = template.prompt_variables[variable_name].start_with or ""
 
-    var_type = template["prompt_variables"][variable_name].get("type", "") 
+    var_type = template.prompt_variables[variable_name].type or ""
 
-    rag_content = template["prompt_variables"][variable_name].get("rag_content", "")
+    rag_content = template.prompt_variables[variable_name].rag_content or ""
 
     if rag_content != "":
         rag_content = "Here are some examples that might help you:\n\n" + rag_content
+    
+    type_constraint = ""
+    
+    if var_type == "int":
+        type_constraint = "The variations must be integer."
 
-    temp_variation_prompt = temp_variation_prompt.format(json=variables_dict, 
+    last_values_list = []
+    last_values = ""
+
+    for i in range(number_of_variation):
+      
+        temp_variation_prompt = initial_variation_prompt.format(json=variables_dict, 
                                                          number_of_variation=str(number_of_variation), 
+                                                         variable_name=name,
                                                          variable=variable_name,
                                                          rag_content=rag_content, 
                                                          start_with=start_with,
-                                                         note=note)
-
-    if var_type == "int":
+                                                         last_values=last_values,
+                                                         type_constraint = type_constraint,
+                                                         note=note,
+                                                         context=context)
         
-        temp_variation_prompt = temp_variation_prompt + "\n" + "The variations must be integer."
-
-
-    variation_completion = ask_chat_gpt(model=Models.GPT_35_TURBO_CHAT.value, system_prompt="Answer as a valid JSON like \{'variations': ['XXXX', 'YYYY']\}",
+        variation_completion = ask_chat_gpt(model=Models.GPT_35_TURBO_CHAT.value, system_prompt="No verbose.",
                                         user_prompt=temp_variation_prompt, max_tokens=max_tokens, temperature=temperature)
+        
+        last_values_list.append(variation_completion)
 
-    variations = json.loads(variation_completion)
+        # Create the desired string format if last_values_list is not empty
+        if last_values_list:
+            last_values = "Generate a content value that is not similar to following values:\n" + "\n".join(last_values_list)
+        else:
+            last_values = ""
+
+    #variation_completion JSON string sometimes contains ' instead of "
+    variation_completion = variation_completion.replace("'", '"')
+
+    variations = {"variations": last_values_list}
 
     return variations
 
@@ -342,31 +406,24 @@ def create_type_message(comp_type, min_value, max_value):
 def write_to_csv(rows, path):
     """Write the provided data to a CSV file at the specified path."""
     with open(path, 'w', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow(["initial_prompt", "evolution_prompt", "completion"])  # Writing the headers
+        writer = csv.DictWriter(file, fieldnames=rows[0].keys())
+        writer.writeheader()  # Writing the headers
         writer.writerows(rows)
 
 
-
-
 # Initialize the template manager and retrieve the template
-
 def generate_data(template, output_path):
 
     csv_rows = []
 
     # Extracting structures and variables from the template
-    prompt_structure = template["prompt_structure"]
-    completion_structure = template["completion_structure"]
+    prompt = template.prompt 
+    completion = template.completion
 
-    prompt_variables = findall(r'\{(.*?)\}', prompt_structure)
-    completion_placeholders = findall(r'\{(.*?)\}', completion_structure)
+    prompt_variables = findall(r'\{(.*?)\}', prompt)
+    completion_variables = findall(r'\{(.*?)\}', completion)
 
     prompt_var_dict = {var: "" for var in prompt_variables}
-
-    variations = generate_variation(variable_name=prompt_variables[0], 
-                                    variables_dict=prompt_var_dict, 
-                                    template=template)["variations"]
 
     process_variations(index=0, 
                         variables_list=prompt_variables, 
@@ -376,62 +433,115 @@ def generate_data(template, output_path):
     # Loading files outside loops to reduce overhead
     evol_prompt_template = load_file(path="files/evol_instruct.txt")
     completion_prompt_template = load_file(path="files/completion.txt")
-
+    
     for param in output_array:
         
-        generated_prompt = prompt_structure.format(**param)
+        generated_prompt = prompt.format(**param)
         
         # Formatting the reference prompt
         reference_prompt = evol_prompt_template.format(number_of_prompts=str(1), prompt=generated_prompt)
         
         prompt_diversified_response = ask_chat_gpt(model=Models.GPT_35_TURBO_CHAT.value, 
-                                                    system_prompt="Answer as a valid JSON like {'prompts': ['XXXX', 'YYYY']}",
+                                                    system_prompt="Answer as a valid JSON like {\"prompts\": [\"XXXX\", \"YYYY\"]}",
                                                     user_prompt=reference_prompt, 
-                                                    max_tokens=256, 
+                                                    max_tokens=512, 
                                                     temperature=1)
-
+        
         diversified_prompts = json.loads(prompt_diversified_response)["prompts"]
 
         for diversified_prompt in diversified_prompts:
 
-            initial_diversified_prompt = diversified_prompt  # Store the initial value of diversified_prompt
-
             completion_results = {}
 
-            for placeholder in completion_placeholders:
-                completion_config = template["completion_variables"][placeholder]
+            for placeholder in completion_variables:
+                completion_config = template.completion_variables[placeholder]
 
-                completion_temp = completion_config.get("temperature", "")
-                max_tokens = completion_config.get("max_tokens", "")
-                comp_type = completion_config.get("type", "")
-                min_value = completion_config.get("min_value", "")
-                max_value = completion_config.get("max_value", "")
-                start_options = completion_config.get("start_with", [""])
+                completion_temperature = completion_config.temperature
+                max_tokens = completion_config.max_tokens
+                comp_type = completion_config.type
+                min_value = completion_config.min_value
+                max_value = completion_config.max_value
+                start_options = completion_config.start_with
 
                 type_message = create_type_message(comp_type, min_value, max_value)
 
                 start_with = random.choice(start_options) if start_options and start_options != [""] else ""
 
                 completion_prompt = completion_prompt_template.format(prompt=diversified_prompt,
-                                                                        variable_name=completion_config["name"],
+                                                                        variable_name=completion_config.name,
                                                                         completion_type=type_message,
                                                                         start_with=start_with)
 
                 completion_content = ask_instruct_gpt(model=Models.GPT_35_TURBO_INSTRUCT.value,
                                                         prompt=completion_prompt,
-                                                        temperature=completion_temp,
+                                                        temperature=completion_temperature,
                                                         max_tokens=max_tokens)
                 
                 completion_results[placeholder] = completion_content
 
                 diversified_prompt = f"{diversified_prompt}\n{completion_content}"
             
-            final_output = completion_structure.format(**completion_results)
+            final_output = completion.format(**completion_results)
 
             # Append the generated data to the csv_rows list
-            csv_rows.append([generated_prompt, initial_diversified_prompt, final_output])
+            row = {"prompt": generated_prompt, "completion": final_output}
+            row.update(param)
+            row.update(completion_results)
+            csv_rows.append(row)
             
-
     write_to_csv(csv_rows, output_path)
 
 
+if __name__ == "__main__":
+
+    #manager = TemplateManager()
+    #template = manager.get_template(template_name=TemplateName.PRODUCT_REVIEW.value)
+    #generate_data(template=template, output_path="output.csv")
+
+    # Create the custom template using the Pydantic models
+    user_template = Template(
+        description="Custom template for Python exercises",
+        prompt="Python exercise: '{python_exercise}'",
+        completion="Answer using python:\n---\n{python_code}\n---",
+        prompt_variables={
+            "python_exercise": Variable(
+                name="Python exercice",
+                temperature=1,
+                max_tokens=50,
+                variation_nb=1,
+                note="The python exercise statement must be medium level."
+            )
+        },
+        completion_variables={
+            "python_code": Variable(
+                name="Python code",
+                temperature=0,
+                max_tokens=256,
+                variation_nb=1
+            )
+        }
+    )
+
+    generate_data(template=user_template, output_path="output.csv")
+
+    '''
+    user_template = {}
+
+    # adding necessary details to the custom template
+    # the prompt and completion structure
+    user_template["prompt"] = "Python exercise: '{python_exercise}'"
+    user_template["completion"] = "Answer using python:\n---\n{python_code}\n---"
+
+    # defining prompt variables details - name, temperature, max_tokens, and number of variations.
+    user_template["prompt_variables"] = {
+        "python_exercise": {"name": "Python exercice", "temperature":1, "max_tokens":50, "variation_nb":1, "note": "The python exercice statement must be easy."}
+    }
+
+    # defining completion variables details - name, temperature, max_tokens, and their data type.
+    # 'start_with' is an optional parameter to specify the beginning of the completion.
+    user_template["completion_variables"] = {
+        "python_code": {"name": "Python code", "temperature":0, "max_tokens":512, "variation_nb":1}
+    }
+
+    generate_data(template=user_template, output_path="output.csv")
+    '''
