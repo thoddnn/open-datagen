@@ -1,4 +1,4 @@
-# 💽 Open-Datagen💽 
+# ◼ Open-Datagen ◼
 
 Welcome to the documentation of `open-datagen`, a revolutionary steerable data generation system for model training, proudly brought to you by our start-up. The main goal of this inventive package is to simplify the lives of developers by easing the process of data preparation for fine-tuning Language Model (LLM) or Machine Learning (ML) models. With `open-datagen`, you have the flexibility to generate and augment any data in any desired format.
 
