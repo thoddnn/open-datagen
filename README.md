@@ -17,6 +17,8 @@ pip install --upgrade open-datagen
 ## 🛠 Usage
 
 ```python
+from data_manager import Template, Variable, generate_data
+
 # Example: Defining a custom template to generate medium-level Python exercises
 user_template = Template(
     description="Custom template for Python exercises",
@@ -44,9 +46,12 @@ user_template = Template(
 )
 
 # Generate your data
-    data = generate_data(template=user_template, output_path="output.csv")
+data = generate_data(template=user_template, output_path="output.csv")
 ```
-#Predefined Templates:
+
+This code will generate 5 medium-level Python exercises
+
+# Predefined Templates:
 
 ```python
 manager = TemplateManager()
