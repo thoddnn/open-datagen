@@ -1,6 +1,6 @@
 # ⬜️ Open-Datagen ⬜️
 
-Elevate your model training with **Open-Datagen** - a steerable data generation system.
+**Open-Datagen**, a steerable and hih quality data generation system for ML models training.
 
 ## 🌱 Features
 
@@ -64,6 +64,8 @@ manager = TemplateManager()
 template = manager.get_template(template_name=TemplateName.PRODUCT_REVIEW.value)
 generate_data(template=template, output_path="output.csv")
 ```
+
+You can find the templates in the template.json file.
 
 ## 🚀 Roadmap 
 
