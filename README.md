@@ -1,6 +1,6 @@
 # ⬜️ Open-Datagen ⬜️
 
-**Open-Datagen**, a steerable and hih quality data generation system for ML models training.
+**Open-Datagen**, a steerable and high-quality data generation system for ML models training.
 
 ## 🌱 Features
 
@@ -21,6 +21,8 @@ export OPENAI_API_KEY='your_openai_api_key'
 ```
 
 ## 🛠 Usage
+
+Example: If you want to train a small model to write great python code
 
 ```python
 from data_manager import Template, Variable, generate_data
