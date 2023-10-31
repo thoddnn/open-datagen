@@ -51,7 +51,7 @@ data = generate_data(template=user_template, output_path="output.csv")
 
 This code will generate 5 medium-level Python exercises
 
-# Predefined Templates:
+### Predefined Templates:
 
 ```python
 manager = TemplateManager()
