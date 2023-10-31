@@ -1,32 +1,36 @@
-# ◼ Open-Datagen ◼
+# ⬜️ Open-Datagen ⬜️
 
-Welcome to the documentation of `open-datagen`, a revolutionary steerable data generation system for model training, proudly brought to you by our start-up. The main goal of this inventive package is to simplify the lives of developers by easing the process of data preparation for fine-tuning Language Model (LLM) or Machine Learning (ML) models. With `open-datagen`, you have the flexibility to generate and augment any data in any desired format.
+Elevate your model training with **Open-Datagen** - a steerable data generation system.
 
-## 🌐 Installation
+## 🌱 Features
 
-Start your journey with `open-datagen` by installing the package in your workspace. You just need to run the following command:
+- Generate data in any format
+- Craft custom templates with Pydantic models
+- Utilize predefined templates
+
+## 📥 Installation
 
 ```bash
-pip install open-datagen
+pip install --upgrade open-datagen
 ```
 
-## 🚀 Usage 
-
-`open-datagen` allows you to create custom templates using Pydantic models. Here is a simple guide on how to implement this:
+## 🛠 Usage
 
 ```python
-# Define your custom template
+# Example: Defining a custom template to generate medium-level Python exercises
 user_template = Template(
     description="Custom template for Python exercises",
     prompt="Python exercise: '{python_exercise}'",
     completion="Answer using python:\n---\n{python_code}\n---",
+    prompt_variation_number=1,
     prompt_variables={
         "python_exercise": Variable(
-            name="Python exercise",
+            name="Python exercice",
             temperature=1,
-            max_tokens=50,
-            variation_nb=1,
-            note="The Python exercise statement must be medium level."
+            max_tokens=126,
+            generation_number=5,
+            note="The python exercise statement must be medium level."
+        
         )
     },
     completion_variables={
@@ -34,22 +38,33 @@ user_template = Template(
             name="Python code",
             temperature=0,
             max_tokens=256,
-            variation_nb=1
+            generation_number=1
         )
     }
 )
+
 # Generate your data
-generate_data(template=user_template, output_path="output.csv")
+    data = generate_data(template=user_template, output_path="output.csv")
 ```
-Lacking inspiration for your data generation? No worries! `open-datagen` also includes a manager to use predefined templates. Here is how you can use them:
+#Predefined Templates:
 
 ```python
 manager = TemplateManager()
 template = manager.get_template(template_name=TemplateName.PRODUCT_REVIEW.value)
 generate_data(template=template, output_path="output.csv")
 ```
-That's all there is to it! `open-datagen` is here to cheerfully help you breathe life into your data, and make your training smoother. Your cool, yet efficient data companion is now ready to roll. 🎉🚀
 
-Thank you for using `open-datagen`! 
+## 🚀 Roadmap 
 
-Always keep code cool, but not too much! 😉💻📈
+- Enhance completion quality with sources like SERPLY, local files, and vector databases
+- Augment and replicate sourced data
+- Ensure data anonymity & open-source model support
+- Future releases to support multimodal data
+  
+## 📣 Note 
+
+`open-datagen` uses OpenAI models. Be aware of potential biases. Use `start_with` and `note` to guide outputs.
+
+## 📞 Connect 
+
+Reach us on Twitter: [@thoddnn](https://twitter.com/thoddnn).

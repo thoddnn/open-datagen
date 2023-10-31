@@ -13,7 +13,7 @@ from urllib.parse import quote
 import csv
 from tenacity import retry, stop_after_attempt, wait_exponential
 from re import findall
-from pydantic import BaseModel, validator, conint, constr
+from pydantic import BaseModel, validator, conint, constr, ValidationError
 from typing import Optional, Dict, List 
 
 load_dotenv()
@@ -217,7 +217,7 @@ class Variable(BaseModel):
     name: str
     temperature: float
     max_tokens: int
-    variation_nb: int
+    generation_number: int
     type: Optional[str]  # like 'int' in your example
     min_value: Optional[int]  # constrain integer to be >= 0
     max_value: Optional[int]
@@ -231,6 +231,9 @@ class Variable(BaseModel):
         if value and value not in ['int', 'str']:
             raise ValueError(f'Invalid type: {value}')
         return value
+    
+    class Config:
+        extra = "forbid"  # This will raise an error for extra fields
 
 class Template(BaseModel):
     description: str
@@ -238,6 +241,10 @@ class Template(BaseModel):
     completion: str
     prompt_variables: Optional[Dict[str, Variable]]
     completion_variables: Optional[Dict[str, Variable]]
+    prompt_variation_number: Optional[int] = 5  
+
+    class Config:
+        extra = "forbid"  # This will raise an error for extra fields
 
 class TemplateName(Enum):
     PRODUCT_REVIEW = "product-review"
@@ -324,9 +331,9 @@ def generate_context_from_json(data, stop_field=None):
     return output
 
 
-def generate_variation(variable_name:str, variables_dict:dict, template:dict):
+def generate_variation(variable_name:str, variables_dict:dict, template:Template):
     
-    initial_variation_prompt = load_file(path="files/variations_v2.txt")
+    initial_variation_prompt = load_file(path="files/generation.txt")
 
     temp_variation_prompt = initial_variation_prompt
 
@@ -335,7 +342,7 @@ def generate_variation(variable_name:str, variables_dict:dict, template:dict):
 
     max_tokens = int(template.prompt_variables[variable_name].max_tokens)
     temperature = template.prompt_variables[variable_name].temperature
-    number_of_variation = template.prompt_variables[variable_name].variation_nb
+    number_of_generation = template.prompt_variables[variable_name].generation_number
     name = template.prompt_variables[variable_name].name
     
     note = template.prompt_variables[variable_name].note
@@ -357,12 +364,10 @@ def generate_variation(variable_name:str, variables_dict:dict, template:dict):
     last_values_list = []
     last_values = ""
 
-    for i in range(number_of_variation):
+    for _ in range(number_of_generation):
       
         temp_variation_prompt = initial_variation_prompt.format(json=variables_dict, 
-                                                         number_of_variation=str(number_of_variation), 
                                                          variable_name=name,
-                                                         variable=variable_name,
                                                          rag_content=rag_content, 
                                                          start_with=start_with,
                                                          last_values=last_values,
@@ -412,9 +417,9 @@ def write_to_csv(rows, path):
 
 
 # Initialize the template manager and retrieve the template
-def generate_data(template, output_path):
+def generate_data(template:Template, output_path:str):
 
-    csv_rows = []
+    result = []
 
     # Extracting structures and variables from the template
     prompt = template.prompt 
@@ -433,14 +438,18 @@ def generate_data(template, output_path):
     # Loading files outside loops to reduce overhead
     evol_prompt_template = load_file(path="files/evol_instruct.txt")
     completion_prompt_template = load_file(path="files/completion.txt")
+
+    # Always ask to generate X variations for the same prompt
+    evol_number = template.prompt_variation_number
     
     for param in output_array:
         
         generated_prompt = prompt.format(**param)
         
         # Formatting the reference prompt
-        reference_prompt = evol_prompt_template.format(number_of_prompts=str(1), prompt=generated_prompt)
+        reference_prompt = evol_prompt_template.format(number_of_prompts=str(evol_number), prompt=generated_prompt)
         
+        # Generate diversified prompts 
         prompt_diversified_response = ask_chat_gpt(model=Models.GPT_35_TURBO_CHAT.value, 
                                                     system_prompt="Answer as a valid JSON like {\"prompts\": [\"XXXX\", \"YYYY\"]}",
                                                     user_prompt=reference_prompt, 
@@ -448,10 +457,12 @@ def generate_data(template, output_path):
                                                     temperature=1)
         
         diversified_prompts = json.loads(prompt_diversified_response)["prompts"]
-
-        for diversified_prompt in diversified_prompts:
+        
+        for diversified_prompt in diversified_prompts[:evol_number]:
 
             completion_results = {}
+
+            initial_diversified_prompt = diversified_prompt
 
             for placeholder in completion_variables:
                 completion_config = template.completion_variables[placeholder]
@@ -479,17 +490,20 @@ def generate_data(template, output_path):
                 
                 completion_results[placeholder] = completion_content
 
-                diversified_prompt = f"{diversified_prompt}\n{completion_content}"
+                diversified_prompt = f"{diversified_prompt}\n\n'''{completion_content}'''"
             
             final_output = completion.format(**completion_results)
 
-            # Append the generated data to the csv_rows list
-            row = {"prompt": generated_prompt, "completion": final_output}
+            # Append the generated data to the result list
+            row = {"prompt": generated_prompt, "diversified_prompt": initial_diversified_prompt, "completion": final_output}
             row.update(param)
             row.update(completion_results)
-            csv_rows.append(row)
-            
-    write_to_csv(csv_rows, output_path)
+            result.append(row)
+
+            # Save the partial result as CSV
+            write_to_csv(result, output_path)
+
+    return result
 
 
 if __name__ == "__main__":
@@ -503,13 +517,15 @@ if __name__ == "__main__":
         description="Custom template for Python exercises",
         prompt="Python exercise: '{python_exercise}'",
         completion="Answer using python:\n---\n{python_code}\n---",
+        prompt_variation_number=1,
         prompt_variables={
             "python_exercise": Variable(
                 name="Python exercice",
                 temperature=1,
-                max_tokens=50,
-                variation_nb=1,
+                max_tokens=126,
+                generation_number=5,
                 note="The python exercise statement must be medium level."
+            
             )
         },
         completion_variables={
@@ -517,12 +533,12 @@ if __name__ == "__main__":
                 name="Python code",
                 temperature=0,
                 max_tokens=256,
-                variation_nb=1
+                generation_number=1
             )
         }
     )
 
-    generate_data(template=user_template, output_path="output.csv")
+    data = generate_data(template=user_template, output_path="output.csv")
 
     '''
     user_template = {}
