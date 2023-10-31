@@ -14,6 +14,12 @@ Elevate your model training with **Open-Datagen** - a steerable data generation 
 pip install --upgrade open-datagen
 ```
 
+### Setting up the OpenAI API key
+
+```bash
+export OPENAI_API_KEY='your_openai_api_key'
+```
+
 ## 🛠 Usage
 
 ```python
