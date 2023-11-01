@@ -25,7 +25,7 @@ export OPENAI_API_KEY='your_openai_api_key'
 Example: If you want to train a small model to write great python code
 
 ```python
-from data_manager import Template, Variable, generate_data
+from opendatagen.data_manager import Template, Variable, generate_data
 
 # Example: Defining a custom template to generate medium-level Python exercises
 user_template = Template(
