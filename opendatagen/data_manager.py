@@ -25,9 +25,9 @@ if not openai_api_key:
 
 openai.api_key = openai_api_key
 
-serply_api_key = os.environ.get('SERPLY_API_KEY')
-if not serply_api_key:
-    raise ValueError("SERPLY_API_KEY not found in environment variables.")
+#serply_api_key = os.environ.get('SERPLY_API_KEY')
+#if not serply_api_key:
+#    raise ValueError("SERPLY_API_KEY not found in environment variables.")
 
 N_RETRIES = 3
 

@@ -1,6 +1,6 @@
-# ⬜️ Open-Datagen ⬜️
+# ⬜️ Open Datagen ⬜️
 
-**Open-Datagen**, a steerable and high-quality data generation system for ML models training.
+**Open Datagen**, a steerable and high-quality data generation system for ML models training.
 
 ## 🌱 Features
 
@@ -11,7 +11,7 @@
 ## 📥 Installation
 
 ```bash
-pip install --upgrade open-datagen
+pip install --upgrade opendatagen
 ```
 
 ### Setting up the OpenAI API key
@@ -78,7 +78,7 @@ You can find the templates in the template.json file.
   
 ## 📣 Note 
 
-`open-datagen` uses OpenAI models. Be aware of potential biases. Use `start_with` and `note` to guide outputs.
+`opendatagen` uses OpenAI models. Be aware of potential biases. Use `start_with` and `note` to guide outputs.
 
 ## 📞 Connect 
 
