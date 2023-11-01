@@ -30,7 +30,7 @@ from opendatagen.data_manager import Template, Variable, generate_data
 # Example: Defining a custom template to generate medium-level Python exercises
 user_template = Template(
     description="Custom template for Python exercises",
-    prompt="Python exercise: '{python_exercise}'",
+    prompt="Python exercise: '{python_exercise}'", 
     completion="Answer using python:\n---\n{python_code}\n---",
     prompt_variation_number=1,
     prompt_variables={
@@ -67,7 +67,7 @@ template = manager.get_template(template_name=TemplateName.PRODUCT_REVIEW.value)
 generate_data(template=template, output_path="output.csv")
 ```
 
-You can find the templates in the template.json file.
+You can find the templates in the [template.json](https://github.com/thoddnn/open-datagen/blob/main/opendatagen/files/template.json) file.
 
 ## 🚀 Roadmap 
 
@@ -80,6 +80,15 @@ You can find the templates in the template.json file.
 
 Please note that `opendatagen` is initially powered by OpenAI's models. Be aware of potential biases and use the `start_with` and `note` field to guide outputs.
 
+## 🙏 Acknowledgements
+
+We would like to express our gratitude to the following open source projects and individuals that have inspired and helped us:
+
+- **Textbook Generation** by [VikParuchuri](https://github.com/VikParuchuri/textbook_quality)
+  
+- **Evol-Instruct Paper** ([Read the paper](https://arxiv.org/abs/2306.08568)) by [WizardLM_AI](https://twitter.com/WizardLM_AI)
+  
+- **GPT-LLM-Trainer** by [mattshumer_](https://twitter.com/mattshumer_) available at [GitHub](https://github.com/mshumer/gpt-llm-trainer)
 
 ## 📞 Connect 
 
