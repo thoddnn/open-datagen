@@ -1,12 +1,12 @@
 # ⬜️ Open Datagen ⬜️
 
-**Open Datagen**, a steerable and high-quality data generation system for ML models training.
+**Open Datagen**, a steerable data generation system for ML models training.
 
 ## 🌱 Features
 
-- Generate data in any format
-- Craft custom templates with Pydantic models
-- Utilize predefined templates
+- Generate data in the format you want
+- Create custom templates with Pydantic models
+- Use predefined templates
 
 ## 📥 Installation
 
@@ -78,7 +78,8 @@ You can find the templates in the template.json file.
   
 ## 📣 Note 
 
-`opendatagen` uses OpenAI models. Be aware of potential biases. Use `start_with` and `note` to guide outputs.
+Please note that `opendatagen` is initially powered by OpenAI's models. Be aware of potential biases and use the `start_with` and `note` field to guide outputs.
+
 
 ## 📞 Connect 
 
