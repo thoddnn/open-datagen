@@ -254,35 +254,33 @@ class TemplateName(Enum):
 
 class TemplateManager:
 
-    def __init__(self, template_file=None):
-        if not template_file:
-            # Default to the bundled template file based on this module's location
-            template_file = os.path.join(os.path.dirname(__file__), 'files', 'template.json')
-        
-        with open(template_file, 'r') as file:
-            self.templates = json.load(file)
-        
-    def list_templates(self):
-        """List all available templates with descriptions."""
-        for name, details in self.templates.items():
-            print(f"{name}: {details['description']}")
-            
-    def get_template(self, template_name="default"):
-        """Retrieve a specific template by name."""
-        return self.templates.get(template_name, None)
-        
-    def use_template(self, template_name, prompt_data, completion_data):
-        """Use a specific template and populate it with provided data."""
-        template = self.templates.get(template_name, None)
-        if not template:
-            raise ValueError(f"Template {template_name} not found!")
-        
-        prompt = template['prompt'].format(**prompt_data)
-        completion = template['completion'].format(**completion_data)
-        
-        return prompt, completion
+    def __init__(self, filename="template.json"):
+        self.template_file_path = self.get_template_file_path(filename)
+        self.templates = self.load_templates()
 
-    
+    def get_template_file_path(self, filename: str) -> str:
+        return os.path.join(os.path.dirname(__file__), 'files', filename)
+
+    def load_templates(self) -> Dict[TemplateName, Template]:
+        with open(self.template_file_path, 'r') as file:
+            raw_data = json.load(file)
+
+        templates = {}
+        for key, data in raw_data.items():
+            try:
+                template_name = TemplateName(key)
+                template = Template(**data)
+                templates[template_name] = template
+            except ValidationError as e:
+                print(f"Error in template {key}: {e}")
+            except ValueError:
+                print(f"Unknown template name {key}")
+
+        return templates
+
+    def get_template(self, template_name: TemplateName) -> Template:
+        return self.templates.get(template_name)
+
 
 def dict_to_string(d):
     result = []
@@ -508,10 +506,14 @@ def generate_data(template:Template, output_path:str):
 
 if __name__ == "__main__":
 
-    #manager = TemplateManager()
-    #template = manager.get_template(template_name=TemplateName.PRODUCT_REVIEW.value)
-    #generate_data(template=template, output_path="output.csv")
-
+    '''
+    manager = TemplateManager()
+    template = manager.get_template(TemplateName.PRODUCT_REVIEW)
+    
+    if template:
+        data = generate_data(template=template, output_path="output.csv")
+    '''
+    
     # Create the custom template using the Pydantic models
     user_template = Template(
         description="Custom template for Python exercises",
@@ -540,24 +542,4 @@ if __name__ == "__main__":
 
     data = generate_data(template=user_template, output_path="output.csv")
 
-    '''
-    user_template = {}
-
-    # adding necessary details to the custom template
-    # the prompt and completion structure
-    user_template["prompt"] = "Python exercise: '{python_exercise}'"
-    user_template["completion"] = "Answer using python:\n---\n{python_code}\n---"
-
-    # defining prompt variables details - name, temperature, max_tokens, and number of variations.
-    user_template["prompt_variables"] = {
-        "python_exercise": {"name": "Python exercice", "temperature":1, "max_tokens":50, "variation_nb":1, "note": "The python exercice statement must be easy."}
-    }
-
-    # defining completion variables details - name, temperature, max_tokens, and their data type.
-    # 'start_with' is an optional parameter to specify the beginning of the completion.
-    user_template["completion_variables"] = {
-        "python_code": {"name": "Python code", "temperature":0, "max_tokens":512, "variation_nb":1}
-    }
-
-    generate_data(template=user_template, output_path="output.csv")
-    '''
+   

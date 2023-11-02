@@ -1,29 +1,16 @@
 {
     "product-review": {
         "description": "Structured prompt for product reviews.",
-        "prompt_structure": "Review of '{product_name}' made by {brand}:",
-        "completion_structure": "{short_review_content}.\n\nRating: {rating}/10[END]",
+        "prompt": "Review of '{product_name}' made by {brand}:",
+        "prompt_variation_number":5,
+        "completion": "{short_review_content}.\n\nRating: {rating}/10[END]",
         "prompt_variables": {
-            "product_name": {"name": "Product name", "temperature":1, "max_tokens":10, "variation_nb":5, "note": "It must be real-world Apple products"},
-            "brand": {"name": "Brand", "temperature":0.2, "max_tokens":10, "variation_nb":1}
+            "product_name": {"name": "Product name", "generation_number":2, "temperature":1, "max_tokens":10, "note": "It must be real-world Apple products"},
+            "brand": {"name": "Brand", "generation_number":1, "temperature":0.2, "max_tokens":10}
         },
         "completion_variables": {
-            "rating": {"name": "Rating", "temperature":1, "max_tokens":8, "type":"int", "min_value":0, "max_value":10},
-            "short_review_content": {"name": "Review content", "temperature":1, "max_tokens":256, "start_with":["It is bad. ", "It is awful. ", "It very bad. "]}
-        }
-    },
-    "blog-post": {
-        "description": "Structured prompt for product reviews.",
-        "prompt_structure": "Write an article about {topic}",
-        "completion_structure": "Title: {aritcle_title}[END TITLE]\n\n{article_introduction}[END INTRO]\n\n{article_content}[END CONTENT]\n\n{article_conclusion}[END]",
-        "prompt_variables": {
-            "topic": {"name": "Topic", "temperature":1, "max_tokens":256, "variation_nb":1}
-        },
-        "completion_variables": {
-            "aritcle_title": {"name": "Title", "temperature":1, "max_tokens":256},
-            "article_introduction": {"name": "Introduction", "temperature":1, "max_tokens":256},
-            "article_content": {"name": "Article content", "temperature":1, "max_tokens":256},
-            "article_conclusion": {"name": "Article conclusion", "temperature":1, "max_tokens":256}
+            "rating": {"name": "Rating", "generation_number":1, "temperature":1, "max_tokens":8, "type":"int", "min_value":0, "max_value":10},
+            "short_review_content": {"name": "Review content", "generation_number":1, "temperature":1, "max_tokens":256, "start_with":["It is bad. ", "It is awful. ", "It very bad. "]}
         }
     }
 

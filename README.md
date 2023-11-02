@@ -27,10 +27,10 @@ Example: If you want to train a small model to write great python code
 ```python
 from opendatagen.data_manager import Template, Variable, generate_data
 
-# Example: Defining a custom template to generate medium-level Python exercises
+# Example: Defining a custom template to generate 5 medium-level Python exercises
 user_template = Template(
     description="Custom template for Python exercises",
-    prompt="Python exercise: '{python_exercise}'", 
+    prompt="Python exercise: '{python_exercise}'",
     completion="Answer using python:\n---\n{python_code}\n---",
     prompt_variation_number=1,
     prompt_variables={
@@ -57,14 +57,21 @@ user_template = Template(
 data = generate_data(template=user_template, output_path="output.csv")
 ```
 
-This code will generate 5 medium-level Python exercises
+This code will generate a dataset of 5 medium-level Python exercises.
 
 ### Predefined Templates:
 
 ```python
+from opendatagen.data_manager import TemplateManager, Template, Variable, generate_data
+
+# Load templates from template.json 
 manager = TemplateManager()
-template = manager.get_template(template_name=TemplateName.PRODUCT_REVIEW.value)
-generate_data(template=template, output_path="output.csv")
+# Or load your own template JSON 
+#manager = TemplateManager(filename="custom_template.json")
+template = manager.get_template(TemplateName.PRODUCT_REVIEW)
+
+if template:
+    data = generate_data(template=template, output_path="output.csv")
 ```
 
 You can find the templates in the [template.json](https://github.com/thoddnn/open-datagen/blob/main/opendatagen/files/template.json) file.
