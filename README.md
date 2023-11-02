@@ -2,13 +2,13 @@
 
 **Open Datagen**, a steerable data generation system for ML models training.
 
-## 🌱 Features
+## Features
 
 - Generate data in the format you want
 - Create custom templates with Pydantic models
 - Use predefined templates
 
-## 📥 Installation
+## Installation
 
 ```bash
 pip install --upgrade opendatagen
@@ -20,7 +20,7 @@ pip install --upgrade opendatagen
 export OPENAI_API_KEY='your_openai_api_key'
 ```
 
-## 🛠 Usage
+## Usage
 
 Example: If you want to train a small model to write great python code
 
@@ -76,18 +76,18 @@ if template:
 
 You can find the templates in the [template.json](https://github.com/thoddnn/open-datagen/blob/main/opendatagen/files/template.json) file.
 
-## 🚀 Roadmap 
+## Roadmap 
 
 - Enhance completion quality with sources like Internet, local files, and vector databases
 - Augment and replicate sourced data
 - Ensure data anonymity & open-source model support
 - Future releases to support multimodal data
   
-## 📣 Note 
+## Note 
 
 Please note that `opendatagen` is initially powered by OpenAI's models. Be aware of potential biases and use the `start_with` and `note` field to guide outputs.
 
-## 🙏 Acknowledgements
+## Acknowledgements
 
 We would like to express our gratitude to the following open source projects and individuals that have inspired and helped us:
 
@@ -97,6 +97,6 @@ We would like to express our gratitude to the following open source projects and
   
 - **GPT-LLM-Trainer** by [mattshumer_](https://twitter.com/mattshumer_) available at [GitHub](https://github.com/mshumer/gpt-llm-trainer)
 
-## 📞 Connect 
+## Connect 
 
 Reach us on Twitter: [@thoddnn](https://twitter.com/thoddnn).
