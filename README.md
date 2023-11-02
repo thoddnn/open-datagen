@@ -78,7 +78,7 @@ You can find the templates in the [template.json](https://github.com/thoddnn/ope
 
 ## 🚀 Roadmap 
 
-- Enhance completion quality with sources like SERPLY, local files, and vector databases
+- Enhance completion quality with sources like Internet, local files, and vector databases
 - Augment and replicate sourced data
 - Ensure data anonymity & open-source model support
 - Future releases to support multimodal data
