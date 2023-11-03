@@ -57,7 +57,7 @@ user_template = Template(
 data = generate_data(template=user_template, output_path="output.csv")
 ```
 
-This code will generate a dataset of 5 medium-level Python exercises.
+This code will generate a dataset of 5 medium-level Python exercises/answers formatted as you asked for.
 
 ### Predefined Templates:
 
