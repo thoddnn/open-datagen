@@ -1,6 +1,7 @@
 __pycache__/
 *.pyc
 *.csv
+main.py
 *.vscode
 *.egg-info/
 dist/

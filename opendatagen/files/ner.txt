@@ -1,0 +1,13 @@
+Given the context of the provided prompt. Rewrite the string between curly brackets with a better common sense value, if it is needed.
+
+Examples: 
+
+###Input###
+My name is {bank_account}. 
+###Output###
+My name is {person_name}. 
+
+###Input###
+'{person}' is a restaurant. 
+###Output###
+'{restaurant_name}' is a restaurant. 

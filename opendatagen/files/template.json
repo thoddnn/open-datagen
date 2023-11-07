@@ -13,5 +13,4 @@
             "short_review_content": {"name": "Review content", "generation_number":1, "temperature":1, "max_tokens":256, "start_with":["It is bad. ", "It is awful. ", "It very bad. "]}
         }
     }
-
 }

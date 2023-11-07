@@ -25,22 +25,23 @@ export OPENAI_API_KEY='your_openai_api_key'
 Example: If you want to train a small model to write great python code
 
 ```python
-from opendatagen.data_manager import Template, Variable, generate_data
+variation_model = OpenAIModel(model_name=ModelName.GPT_35_TURBO_CHAT)
+completion_model = OpenAIModel(model_name=ModelName.GPT_35_TURBO_INSTRUCT)
 
-# Example: Defining a custom template to generate 5 medium-level Python exercises
+generator = DataGenerator(variation_model, completion_model)
+
+# Create the custom template using the Pydantic models
 user_template = Template(
     description="Custom template for Python exercises",
-    prompt="Python exercise: '{python_exercise}'",
-    completion="Answer using python:\n---\n{python_code}\n---",
+    prompt="Pthon exercice statement: {python_exercice_statement}",
+    completion="Answer:\n{python_code}",
     prompt_variation_number=1,
     prompt_variables={
-        "python_exercise": Variable(
-            name="Python exercice",
+        "python_exercice_statement": Variable(
+            name="Python exercice statement",
             temperature=1,
-            max_tokens=126,
-            generation_number=5,
-            note="The python exercise statement must be medium level."
-        
+            max_tokens=120,
+            generation_number=10
         )
     },
     completion_variables={
@@ -53,8 +54,10 @@ user_template = Template(
     }
 )
 
-# Generate your data
-data = generate_data(template=user_template, output_path="output.csv")
+data = generator.generate_data(template=user_template, 
+                        output_path="output.csv")
+
+print(data)
 ```
 
 This code will generate a dataset of 5 medium-level Python exercises/answers formatted as you asked for.
@@ -62,16 +65,17 @@ This code will generate a dataset of 5 medium-level Python exercises/answers for
 ### Predefined Templates:
 
 ```python
-from opendatagen.data_manager import TemplateManager, Template, Variable, generate_data
+variation_model = OpenAIModel(model_name=ModelName.GPT_35_TURBO_CHAT)
+completion_model = OpenAIModel(model_name=ModelName.GPT_35_TURBO_INSTRUCT)
 
-# Load templates from template.json 
+generator = DataGenerator(variation_model, completion_model)
+
 manager = TemplateManager()
-# Or load your own template JSON 
-#manager = TemplateManager(filename="custom_template.json")
 template = manager.get_template(TemplateName.PRODUCT_REVIEW)
 
-if template:
-    data = generate_data(template=template, output_path="output.csv")
+data = generator.generate_data(template=template, output_path="output.csv")
+
+print(data)
 ```
 
 You can find the templates in the [template.json](https://github.com/thoddnn/open-datagen/blob/main/opendatagen/files/template.json) file.
@@ -94,8 +98,6 @@ We would like to express our gratitude to the following open source projects and
 - **Textbook Generation** by [VikParuchuri](https://github.com/VikParuchuri/textbook_quality)
   
 - **Evol-Instruct Paper** ([Read the paper](https://arxiv.org/abs/2306.08568)) by [WizardLM_AI](https://twitter.com/WizardLM_AI)
-  
-- **GPT-LLM-Trainer** by [mattshumer_](https://twitter.com/mattshumer_) available at [GitHub](https://github.com/mshumer/gpt-llm-trainer)
 
 ## Connect 
 
