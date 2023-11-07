@@ -25,6 +25,10 @@ export OPENAI_API_KEY='your_openai_api_key'
 Example: If you want to train a small model to write great python code
 
 ```python
+from opendatagen.data_generator import DataGenerator
+from opendatagen.model import OpenAIModel, ModelName
+from opendatagen.template import Template, Variable
+
 variation_model = OpenAIModel(model_name=ModelName.GPT_35_TURBO_CHAT)
 completion_model = OpenAIModel(model_name=ModelName.GPT_35_TURBO_INSTRUCT)
 
@@ -40,7 +44,7 @@ user_template = Template(
         "python_exercice_statement": Variable(
             name="Python exercice statement",
             temperature=1,
-            max_tokens=120,
+            max_tokens=64,
             generation_number=10
         )
     },
@@ -65,8 +69,9 @@ This code will generate a dataset of 5 medium-level Python exercises/answers for
 ### Predefined Templates:
 
 ```python
-variation_model = OpenAIModel(model_name=ModelName.GPT_35_TURBO_CHAT)
-completion_model = OpenAIModel(model_name=ModelName.GPT_35_TURBO_INSTRUCT)
+from opendatagen.data_generator import DataGenerator
+from opendatagen.model import OpenAIModel, ModelName
+from opendatagen.template import TemplateManager, TemplateName
 
 generator = DataGenerator(variation_model, completion_model)
 
