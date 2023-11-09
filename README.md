@@ -26,7 +26,7 @@ Example: If you want to train a small model to write great python code
 
 ```python
 from opendatagen.data_generator import DataGenerator
-from opendatagen.model import ChatModel, InstructModel
+from opendatagen.model import LLM
 from opendatagen.template import Template, Variable
 
 variation_model = LLM.load_chat.GPT_35_TURBO_CHAT 
@@ -69,7 +69,7 @@ This code will generate a dataset of 5 medium-level Python exercises/answers for
 
 ```python
 from opendatagen.data_generator import DataGenerator
-from opendatagen.model import ChatModel, InstructModel
+from opendatagen.model import LLM
 from opendatagen.template import TemplateManager, TemplateName
 
 variation_model = LLM.load_chat.GPT_35_TURBO_CHAT
