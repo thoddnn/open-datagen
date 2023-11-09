@@ -3,8 +3,8 @@ from typing import Optional, List, Dict
 from enum import Enum
 import os 
 import json 
-from utils import load_file
-from model import OpenAIModel
+from opendatagen.utils import load_file
+from opendatagen.model import OpenAIModel
 
 class Variable(BaseModel):
     name: str

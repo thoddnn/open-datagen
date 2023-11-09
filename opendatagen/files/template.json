@@ -1,7 +1,7 @@
 {
     "product-review": {
         "description": "Structured prompt for product reviews.",
-        "prompt": "Review of '{product_name}' made by {brand}:",
+        "prompt": "Write a review of '{product_name}' made by {brand}:",
         "prompt_variation_number":5,
         "completion": "{short_review_content}.\n\nRating: {rating}/10[END]",
         "prompt_variables": {

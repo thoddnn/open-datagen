@@ -1,6 +1,6 @@
-{context}
+Given this prompt: """{context}"""
 
-Write a {variable_name} value. 
+Write the {variable_name} value. 
 
 {type_constraint}
 
@@ -9,7 +9,5 @@ Write a {variable_name} value.
 {rag_content}
 
 {last_values}
-
-###{variable_name}###: 
 
 {start_with}

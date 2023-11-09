@@ -1,10 +1,12 @@
-Write the {variable_name} for the given prompt. 
+{last_values}
 
 {completion_type}
 
-#Given prompt#:
-{prompt}
+Given prompt:
+"""{prompt}"""
 
-#{variable_name}#:
+Given completion:
+"""{completion}"""
 
+Write a {variable_name} value for the given prompt. {type_message}
 {start_with}

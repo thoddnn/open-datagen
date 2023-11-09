@@ -26,25 +26,23 @@ Example: If you want to train a small model to write great python code
 
 ```python
 from opendatagen.data_generator import DataGenerator
-from opendatagen.model import OpenAIModel, ModelName
+from opendatagen.model import ChatModel, InstructModel
 from opendatagen.template import Template, Variable
 
-variation_model = OpenAIModel(model_name=ModelName.GPT_35_TURBO_CHAT)
-completion_model = OpenAIModel(model_name=ModelName.GPT_35_TURBO_INSTRUCT)
-
-generator = DataGenerator(variation_model, completion_model)
+variation_model = LLM.load_chat.GPT_35_TURBO_CHAT 
+completion_model = LLM.load_instruct.GPT_35_TURBO_INSTRUCT
 
 # Create the custom template using the Pydantic models
 user_template = Template(
     description="Custom template for Python exercises",
-    prompt="Pthon exercice statement: {python_exercice_statement}",
+    prompt="Python exercice statement: {python_exercice_statement}",
     completion="Answer:\n{python_code}",
     prompt_variation_number=1,
     prompt_variables={
         "python_exercice_statement": Variable(
             name="Python exercice statement",
             temperature=1,
-            max_tokens=64,
+            max_tokens=120,
             generation_number=10
         )
     },
@@ -58,8 +56,9 @@ user_template = Template(
     }
 )
 
-data = generator.generate_data(template=user_template, 
-                        output_path="output.csv")
+generator = DataGenerator(template=user_template, variation_model=variation_model, completion_model=completion_model)
+
+data = generator.generate_data(output_path="output.csv")
 
 print(data)
 ```
@@ -70,15 +69,18 @@ This code will generate a dataset of 5 medium-level Python exercises/answers for
 
 ```python
 from opendatagen.data_generator import DataGenerator
-from opendatagen.model import OpenAIModel, ModelName
+from opendatagen.model import ChatModel, InstructModel
 from opendatagen.template import TemplateManager, TemplateName
 
-generator = DataGenerator(variation_model, completion_model)
+variation_model = LLM.load_chat.GPT_35_TURBO_CHAT
+completion_model = LLM.load_instruct.GPT_35_TURBO_INSTRUCT
 
 manager = TemplateManager()
 template = manager.get_template(TemplateName.PRODUCT_REVIEW)
 
-data = generator.generate_data(template=template, output_path="output.csv")
+generator = DataGenerator(template=template, variation_model=variation_model, completion_model=completion_model)
+
+data = generator.generate_data(output_path="output.csv")
 
 print(data)
 ```

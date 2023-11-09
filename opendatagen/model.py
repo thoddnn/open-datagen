@@ -14,6 +14,8 @@ class ModelName(Enum):
     GPT_35_TURBO_16K_CHAT = "gpt-3.5-turbo-16k"
     GPT_4_CHAT = "gpt-4"
     GPT_4_TURBO_CHAT = "gpt-4-1106-preview"
+    TEXT_EMBEDDING_ADA = "text-embedding-ada-002"
+
 
 class OpenAIModel:
 
@@ -23,8 +25,10 @@ class OpenAIModel:
         self.client.api_key = os.getenv("OPENAI_API_KEY")
         self.model_name = model_name.value
 
-    #@retry(stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
-    def ask_chat_gpt(self, system_prompt:str, user_prompt:str, max_tokens:int, temperature:int, json_mode=False) -> str: 
+class ChatModel(OpenAIModel):
+
+    @retry(stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
+    def ask(self, system_prompt:str, user_prompt:str, max_tokens:int, temperature:int, json_mode=False) -> str: 
 
         if json_mode:
 
@@ -56,8 +60,11 @@ class OpenAIModel:
         
         return answer
 
+
+class InstructModel(OpenAIModel):
+
     @retry(stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
-    def ask_instruct_gpt(self, prompt:str, temperature:int, max_tokens:int, json_mode=False) -> str:
+    def ask(self, prompt:str, temperature:int, max_tokens:int, json_mode=False) -> str:
 
         if json_mode:
 
@@ -82,12 +89,35 @@ class OpenAIModel:
         
         return answer
 
+class EmbeddingModel(OpenAIModel):
+
     def create_embedding(self, prompt:str):
         embedding = self.client.embeddings.create(
-            model="text-embedding-ada-002",
+            model=self.model_name,
             input=prompt
         )
+
         return embedding["data"][0]["embedding"]
 
-    def cosine_similarity(self, A:list, B:list):
-        return np.dot(A, B)
+class LLM:
+    
+    class ChatLoader:
+        GPT_35_TURBO_CHAT = ChatModel(ModelName.GPT_35_TURBO_CHAT)
+        GPT_35_TURBO_16K_CHAT = ChatModel(ModelName.GPT_35_TURBO_16K_CHAT)
+        GPT_4_CHAT = ChatModel(ModelName.GPT_4_CHAT)
+        GPT_4_TURBO_CHAT = ChatModel(ModelName.GPT_4_TURBO_CHAT)
+
+    class InstructLoader:
+
+        GPT_35_TURBO_INSTRUCT = InstructModel(ModelName.GPT_35_TURBO_INSTRUCT)
+        TEXT_DAVINCI_INSTRUCT = InstructModel(ModelName.TEXT_DAVINCI_INSTRUCT)
+        
+    class EmbeddingLoader:
+
+        GPT_35_TURBO_INSTRUCT = EmbeddingModel(ModelName.TEXT_EMBEDDING_ADA)
+
+    load_chat = ChatLoader()
+    load_instruct = InstructLoader()
+    load_embedding = EmbeddingLoader()
+
+

@@ -9,7 +9,7 @@
             "name": "Python: Current File",
             "type": "python",
             "request": "launch",
-            "program": "${file}",
+            "program": "${workspaceFolder}/opendatagen/main.py",
             "console": "integratedTerminal",
             "justMyCode": true
         }

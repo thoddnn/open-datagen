@@ -1,7 +1,7 @@
 import re
 import spacy
-from model import OpenAIModel, ModelName
-from utils import load_file
+from opendatagen.model import OpenAIModel, ModelName
+from opendatagen.utils import load_file
 
 class Anonymizer:
 
@@ -63,7 +63,7 @@ class Anonymizer:
 
     def llm_anonymization(self, text: str) -> str:
 
-        completion = self.completion_model.ask_chat_gpt(
+        completion = self.completion_model.ask(
             system_prompt=self.ner_prompt,
             user_prompt=text,
             max_tokens=126,
