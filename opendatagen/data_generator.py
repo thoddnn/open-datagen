@@ -174,9 +174,11 @@ class DataGenerator:
                                                         note=note,
                                                         context=context)
 
-            #instruction = f"Generate a unique {variable_name} based on the context:\n\n{prompt_text}\n\n{variable_name}:\n\n"
-            generated_value = self.variation_model.ask(system_prompt="No verbose.", user_prompt=temp_variation_prompt, max_tokens=max_tokens, temperature=temperature)
-            
+            if isinstance(self.variation_model, InstructModel):
+                generated_value = self.variation_model.ask(prompt=temp_variation_prompt, max_tokens=max_tokens, temperature=temperature)
+            else:
+                 generated_value = self.variation_model.ask(system_prompt="No verbose.", user_prompt=temp_variation_prompt, max_tokens=max_tokens, temperature=temperature)
+
             last_values_list.append(generated_value)
             
             # Create the desired string format if last_values_list is not empty
@@ -238,9 +240,13 @@ class DataGenerator:
                                                                             completion=completion_text,
                                                                             start_with=start_with,
                                                                             last_values=last_values,
-                                                                            type_message=type_message)
+                                                                            type_message=type_message,
+                                                                            note=note)
 
-            generated_value = self.variation_model.ask(system_prompt="No verbose.", user_prompt=temp_variation_prompt, max_tokens=max_tokens, temperature=temperature)
+            if isinstance(self.completion_model, InstructModel):
+                generated_value = self.completion_model.ask(prompt=temp_variation_prompt, max_tokens=max_tokens, temperature=temperature)
+            else:
+                generated_value = self.completion_model.ask(system_prompt="No verbose.", user_prompt=temp_variation_prompt, max_tokens=max_tokens, temperature=temperature)
             
             last_values_list.append(generated_value)
 
@@ -384,9 +390,9 @@ class DataGenerator:
 
                     prompt_list = self.generate_evol_instruct_prompt(initial_prompt=initial_prompt)
 
-                for prompt in prompt_list:
+                for prompt_text in prompt_list:
 
-                    completion_parameters = self.contextual_completion_generation(prompt_text=prompt, completion=completion, variables=completion_variables, current_variation_dict={}, fixed_variables=self.template.completion_variables)
+                    completion_parameters = self.contextual_completion_generation(prompt_text=prompt_text, completion=completion, variables=completion_variables, current_variation_dict={}, fixed_variables=self.template.completion_variables)
 
                     print(completion_parameters)
 
@@ -397,8 +403,9 @@ class DataGenerator:
                         if save_as_csv:
                             
                             # Append the generated data to the result list
-                            row = {"prompt": initial_prompt, "evol_prompt": prompt, "completion": completion_result}
-                            
+                            row = {"prompt": initial_prompt, "evol_prompt": prompt_text, "completion": completion_result}
+                            row.update(prompt_param)
+                            row.update(completion_param)
                             result.append(row)
                             
                             # Save the partial result as CSV

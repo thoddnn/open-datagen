@@ -27,18 +27,23 @@ class Anonymizer:
     }
 
     REGEX_PATTERN = {
-            "credit_card_pattern": "{credit_card}",
-            "social_security_pattern": "{us_social_security}",
-            "passport_pattern": "{passport}",
-            "drivers_license_pattern": "{driver_license}",
-            "ip_address_pattern": "{ip_address}",
-            "date_pattern": "{date}",
-            "bank_account_pattern": "{bank_account}",
-            "phone_number_pattern": "{phone_number}",
-            "email_pattern": "{email}",
-            "url_pattern": "{url}",
-            "address_pattern": "{address}"
-        }
+        "{phone_number}": r"\+?\d{1,4}?[-.\s]?\(?\d{1,3}?\)?[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,9}",
+        "{email}": r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",
+        "{credit_card_pattern}": r"\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}",
+        "{address_pattern}": r"\d{1,5}\s\w+(\s\w+)*,\s\w+,\s\w+(\s\w+)*",
+        "{date_pattern}": r"(\d{4}[-/]\d{1,2}[-/]\d{1,2})|(\d{1,2}[-/]\d{1,2}[-/]\d{4})",
+        "{time_pattern}": r"(?:[01]\d|2[0-3]):[0-5]\d",
+        "{ipv4_pattern}": r"\b(?:\d{1,3}\.){3}\d{1,3}\b",
+        "{url_pattern}": r"https?://(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)",
+        "{ssn_pattern}": r"\d{3}-\d{2}-\d{4}",
+        "{license_plate_pattern}": r"[A-Z0-9]{2,}-[A-Z0-9]{2,}",
+        "{zip_code_pattern}": r"\d{5}(-\d{4})?",
+        "{vin_pattern}": r"[A-HJ-NPR-Z0-9]{17}",
+        "{iban_pattern}": r"[A-Z]{2}\d{2}[A-Z0-9]{1,30}",
+        "{driver_license_pattern}": r"[A-Z]{1,2}-\d{4,9}"
+    }
+
+
 
     def __init__(self, completion_model:OpenAIModel):
         
@@ -48,7 +53,7 @@ class Anonymizer:
 
     def regex_anonymization(self, text: str) -> str:
 
-        for pattern, replacement in self.REGEX_PATTERN.items():
+        for replacement, pattern in self.REGEX_PATTERN.items():
             text = re.sub(pattern, replacement, text)
         
         return text

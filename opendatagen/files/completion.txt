@@ -9,4 +9,7 @@ Given completion:
 """{completion}"""
 
 Write a {variable_name} value for the given prompt. {type_message}
+
+{note}
+
 {start_with}

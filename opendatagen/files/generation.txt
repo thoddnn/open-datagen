@@ -1,3 +1,4 @@
+#Value between curly bracket has a common sense
 Given this prompt: """{context}"""
 
 Write the {variable_name} value. 
