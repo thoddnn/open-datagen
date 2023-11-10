@@ -16,7 +16,6 @@ class ModelName(Enum):
     GPT_4_TURBO_CHAT = "gpt-4-1106-preview"
     TEXT_EMBEDDING_ADA = "text-embedding-ada-002"
 
-
 class OpenAIModel:
 
     client = OpenAI()
@@ -29,61 +28,47 @@ class ChatModel(OpenAIModel):
 
     @retry(stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
     def ask(self, system_prompt:str, user_prompt:str, max_tokens:int, temperature:int, json_mode=False) -> str: 
+        
+        param = {
+            
+            "model":self.model_name,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ]
+
+        }
 
         if json_mode:
+            param["response_format"] = {"type": "json_object"}
 
-            completion = self.client.chat.completions.create(
-            model=self.model_name,
-            response_format= {"type": "json_object"},
-            messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt}
-                    ],
-            max_tokens=max_tokens,
-            temperature=temperature
-        )
+        completion = self.client.chat.completions.create(**param)
             
-        else:
-            
-            completion = self.client.chat.completions.create(
-            model=self.model_name,
-            messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt}
-                    ],
-            max_tokens=max_tokens,
-            temperature=temperature
-        )
-
-
         answer = completion.choices[0].message.content
         
         return answer
-
 
 class InstructModel(OpenAIModel):
 
     @retry(stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
     def ask(self, prompt:str, temperature:int, max_tokens:int, json_mode=False) -> str:
+    
+        param = {
+            
+            "model":self.model_name,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "prompt": prompt
+
+        }
 
         if json_mode:
+            param["response_format"] = {"type": "json_object"}
 
-            completion = self.client.completions.create(
-            model=self.model_name,
-            response_format= {"type": "json_object"},
-            prompt=prompt,
-            max_tokens=max_tokens,
-            temperature=temperature
-            )
-
-        else:
-
-            completion = self.client.completions.create(
-            model=self.model_name,
-            prompt=prompt,
-            max_tokens=max_tokens,
-            temperature=temperature
-            )
+ 
+        completion = self.client.completions.create(**param)
 
         answer = completion.choices[0].text
         

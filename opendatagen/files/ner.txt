@@ -3,9 +3,9 @@ Given the context of the provided prompt. Rewrite the string between curly brack
 Examples: 
 
 ###Input###
-My name is {bank_account}. 
+My first name is {bank_account}. 
 ###Output###
-My name is {person_name}. 
+My name is {first_name}. 
 
 ###Input###
 '{person}' is a restaurant. 
