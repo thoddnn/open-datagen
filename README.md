@@ -4,9 +4,19 @@
 
 ## Features
 
-- Generate data in the format you want
-- Create custom templates with Pydantic models
-- Use predefined templates
+- Generate synthetic datasets with a fixed format using:
+    - User-defined template with pydantic object
+    - Predefined templates
+
+- Data anonymization 
+
+- (SOON) Quality enhancement with RAG from sources (Internet, local files etc)
+
+- (SOON) Data augmentation 
+
+- (SOON) Data evaluation 
+
+- (SOON) Multimodality 
 
 ## Installation
 
@@ -87,12 +97,9 @@ print(data)
 
 You can find the templates in the [template.json](https://github.com/thoddnn/open-datagen/blob/main/opendatagen/files/template.json) file.
 
-## Roadmap 
+## Contribution 
 
-- Enhance completion quality with sources like Internet, local files, and vector databases
-- Augment and replicate sourced data
-- Ensure data anonymity & open-source model support
-- Future releases to support multimodal data
+We welcome contributions to Open Datagen! Whether you're looking to fix bugs, add templates, new features, or improve documentation, your help is greatly appreciated.
   
 ## Note 
 
