@@ -11,7 +11,7 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/thoddnn/open-datagen",
-    version='0.0.8',
+    version='0.0.9',
     packages=find_packages(),
     include_package_data=True,  
     install_requires=[
@@ -22,6 +22,7 @@ setup(
         'requests>=2.29.0',
         'tenacity>=8.2.2',
         'pydantic>=2',
-        'spacy>=3'
+        'spacy>=3',
+        'tiktoken>=0.5',
     ],
 )

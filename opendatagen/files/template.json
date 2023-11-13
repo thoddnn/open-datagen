@@ -2,15 +2,15 @@
     "product-review": {
         "description": "Structured prompt for product reviews.",
         "prompt": "Write a review of '{product_name}' made by {brand}:",
-        "prompt_variation_number":1,
-        "completion": "{short_review}.\n\nRating: {rating}/10[END]",
+        "prompt_variation_number":2,
+        "completion": "{review}.\n\nRating: {rating}/10[END]",
         "prompt_variables": {
-            "product_name": {"name": "Product name", "generation_number":5, "temperature":1, "max_tokens":10, "note": "It must be real-world Apple products"},
+            "product_name": {"name": "Product name", "generation_number":2, "temperature":1, "max_tokens":10, "note": "It must be real-world Apple products"},
             "brand": {"name": "Brand", "generation_number":1, "temperature":0, "max_tokens":10}
         },
         "completion_variables": {
             "rating": {"name": "Rating", "generation_number":1, "temperature":1, "max_tokens":8, "type":"int", "min_value":0, "max_value":10},
-            "short_review": {"name": "Short review", "generation_number":1, "temperature":1, "max_tokens":256, "note":"The review must be very bad and severe", "start_with":["It is bad. ", "It is awful. ", "It very bad. "]}
+            "review": {"name": "Review", "generation_number":1, "temperature":1, "max_tokens":126, "use_internet":true, "note":"The review must be very bad and severe", "start_with":["It is bad. ", "It is awful. ", "It very bad. "]}
         }
     }
 }

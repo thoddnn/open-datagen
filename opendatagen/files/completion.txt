@@ -10,6 +10,8 @@ Given completion:
 
 Write a {variable_name} value for the given prompt. {type_message}
 
+Don't use any variable between curly brackets, brackets in your answer.
+
 {note}
 
 {start_with}

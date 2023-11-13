@@ -11,6 +11,7 @@ class Variable(BaseModel):
     temperature: float
     max_tokens: int
     generation_number: int
+    use_internet: Optional[bool] = False
     type: Optional[str] = None # like 'int' in your example
     min_value: Optional[int] = None # constrain integer to be >= 0
     max_value: Optional[int] = None

@@ -16,7 +16,7 @@
 
 - (SOON) Data evaluation 
 
-- (SOON) Multimodality 
+- (SOON) Multimodality
 
 ## Installation
 
@@ -28,6 +28,12 @@ pip install --upgrade opendatagen
 
 ```bash
 export OPENAI_API_KEY='your_openai_api_key'
+```
+
+### Setting up the SERPLY API key (optional)
+
+```bash
+export SERPLY_API_KEY='your_serply_api_key'
 ```
 
 ## Usage

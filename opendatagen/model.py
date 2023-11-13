@@ -4,6 +4,10 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 from openai import OpenAI
 import numpy as np
 import os 
+import json 
+
+from utils import extract_content_from_internet
+
 
 N_RETRIES = 3
 
@@ -26,29 +30,70 @@ class OpenAIModel:
 
 class ChatModel(OpenAIModel):
 
-    @retry(stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
-    def ask(self, system_prompt:str, user_prompt:str, max_tokens:int, temperature:int, json_mode=False) -> str: 
+    tools = [
+                    {
+                    "name": "extract_content_from_internet",
+                    "description": "Search on Google for a specific keywords and return article content",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                        "keyword": {"type": "string", "description": "The keyword to search for on Google Search"}
+                        },
+                        "required": ["keyword"]
+                    }
+                    
+                },
+                {
+                "name": "get_stock_price",
+                "description": "Get the current stock price",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                    "symbol": {
+                        "type": "string",
+                        "description": "The stock symbol"
+                    }
+                    },
+                    "required": ["symbol"]
+                }
+            } ]
+
+
+    #@retry(stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
+    def ask(self, system_prompt:str, max_tokens:int, temperature:int, messages:list, json_mode=False, seed:int =None, use_tools:bool=False) -> str: 
         
         param = {
             
             "model":self.model_name,
-            "max_tokens": max_tokens,
             "temperature": temperature,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ]
-
+            "messages": messages,
+            
         }
-
+        
+        if use_tools:
+            param["functions"] = self.tools
+        else:
+            param["max_tokens"] = max_tokens
+        
         if json_mode:
             param["response_format"] = {"type": "json_object"}
 
+        if seed:
+            param["seed"] = seed
+
+
         completion = self.client.chat.completions.create(**param)
-            
+
+        #if completion.choices[0].finish_reason == "stop":
+
         answer = completion.choices[0].message.content
-        
-        return answer
+
+        return answer 
+
+        #elif completion.choices[0].finish_reason == "length":
+        #completion.choices[0].finish_reason == "function_call":
+
+    
 
 class InstructModel(OpenAIModel):
 

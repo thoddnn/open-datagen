@@ -2,6 +2,10 @@ import os
 import csv 
 import trafilatura
 import re 
+import requests
+from urllib.parse import quote_plus
+import json 
+
 
 def dict_to_string(d):
     result = []
@@ -92,3 +96,73 @@ def title_case_to_snake_case(title_str):
     # Convert all the words to lowercase and join them with underscores
     snake_case_str = '_'.join(word.lower() for word in words)
     return snake_case_str
+
+
+
+def word_counter(input_string):
+    # Split the string into words based on whitespace
+    words = input_string.split()
+
+    # Count the number of words
+    number_of_words = len(words)
+    
+    return number_of_words
+
+def get_google_search_result(keyword:dict, maximum_number_of_link:int = None):
+
+    encoded_keyword = quote_plus(keyword)
+    
+    url = f"https://api.serply.io/v1/search/q={encoded_keyword}"
+
+    headers = {
+        "Content-Type": "application/json",
+        "X-User-Agent": "",
+        "X-Proxy-Location": "",
+        "X-Api-Key": os.environ.get("SERPLY_API_KEY"),
+        "X-Proxy-Location": "US"
+    }
+
+    response = requests.request("GET", url, headers=headers)
+
+    response_json = json.loads(response.text)["results"]
+
+    result = []
+
+    for element in response_json: 
+
+        link = element['link']
+        result.append(link)
+
+    if maximum_number_of_link:
+        return result[:maximum_number_of_link]
+    
+    return result
+
+def get_content_from_url(link:str):
+
+    downloaded = trafilatura.fetch_url(link)
+    content = trafilatura.extract(downloaded)
+
+    return content
+
+def extract_content_from_internet(keyword:str):
+    
+    print(f"Browsing for the keyword {keyword}...")
+
+    result = ""
+    
+    urls = get_google_search_result(keyword)
+    
+    for url in urls:
+
+        content = get_content_from_url(url)
+        
+        if content and word_counter(content) > 500:
+                
+            print(url)
+
+            result = result + "\n" + content
+
+    print("Finish browsing...")
+    
+    return result 

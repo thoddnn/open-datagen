@@ -11,6 +11,7 @@ from re import findall
 from typing import Dict, List, Union
 from opendatagen.utils import dict_to_string, load_file, write_to_csv, generate_context_from_json, extract_website_details, create_type_message, find_strings_in_brackets
 from opendatagen.utils import snake_case_to_title_case, title_case_to_snake_case
+from opendatagen.utils import extract_content_from_internet
 from opendatagen.anonymizer import Anonymizer
 from opendatagen.model import ChatModel, InstructModel, EmbeddingModel
 from opendatagen.template import Template, Variable,  create_variable_from_name
@@ -21,7 +22,7 @@ class DataGenerator:
 
     output_array = []
 
-    def __init__(self, template:Template, variation_model:ChatModel, completion_model:Union[ChatModel, InstructModel]):
+    def __init__(self, template:Template, variation_model:ChatModel, completion_model:ChatModel):
 
         self.template = template
         self.variation_model = variation_model
@@ -150,6 +151,8 @@ class DataGenerator:
 
         rag_content = current_variable.rag_content or ""
 
+        
+
         if rag_content != "":
             rag_content = "Here are some examples that might help you:\n\n" + rag_content
 
@@ -174,10 +177,20 @@ class DataGenerator:
                                                         note=note,
                                                         context=context)
 
+            
+
             if isinstance(self.variation_model, InstructModel):
+
                 generated_value = self.variation_model.ask(prompt=temp_variation_prompt, max_tokens=max_tokens, temperature=temperature)
+
             else:
-                 generated_value = self.variation_model.ask(system_prompt="No verbose.", user_prompt=temp_variation_prompt, max_tokens=max_tokens, temperature=temperature)
+                 
+                start_messages = [
+                        {"role": "system", "content": "No verbose."},
+                        {"role": "user", "content": temp_variation_prompt},
+                ]
+                 
+                generated_value = self.variation_model.ask(system_prompt="No verbose.", max_tokens=max_tokens, temperature=temperature, messages=start_messages)
 
             last_values_list.append(generated_value)
             
@@ -192,7 +205,7 @@ class DataGenerator:
         return variations
 
     def generate_completion_variable(self, variable_name:str, prompt_text:str, completion_text:str, current_variable:Variable):
-          
+        
         initial_variation_prompt = load_file(path="files/completion.txt")
 
         temp_variation_prompt = initial_variation_prompt
@@ -246,7 +259,13 @@ class DataGenerator:
             if isinstance(self.completion_model, InstructModel):
                 generated_value = self.completion_model.ask(prompt=temp_variation_prompt, max_tokens=max_tokens, temperature=temperature)
             else:
-                generated_value = self.completion_model.ask(system_prompt="No verbose.", user_prompt=temp_variation_prompt, max_tokens=max_tokens, temperature=temperature)
+                
+                start_messages = [
+                        {"role": "system", "content": "No verbose."},
+                        {"role": "user", "content": temp_variation_prompt},
+                ]
+
+                generated_value = self.completion_model.ask(system_prompt="No verbose.", max_tokens=max_tokens, temperature=temperature, messages=start_messages)
             
             last_values_list.append(generated_value)
 
@@ -280,6 +299,20 @@ class DataGenerator:
         current_completion = formatted_template.split(f'{{{next_var}}}')[0] + f'{{{next_var}}}'  # Keep only the text up to the current variable
 
         variable = fixed_variables[next_var]
+        
+        if variable.rag_content == None and variable.use_internet == True:
+
+            start_messages = [
+                        {"role": "system", "content": "Based on the information provided by the user, write a search query string for a Google Search"},
+                        {"role": "user", "content": f"{variable.name} {variable.note}"},
+                ]
+            
+            keyword = self.variation_model.ask(system_prompt=start_messages[0],
+                                               messages=start_messages,
+                                               max_tokens=30,
+                                               temperature=1)
+
+            variable.rag_content = extract_content_from_internet(keyword=keyword)
 
         variations = self.generate_completion_variable(variable_name=next_var, prompt_text=prompt_text, completion_text=current_completion, current_variable=variable)
 
@@ -322,6 +355,20 @@ class DataGenerator:
 
         variable = fixed_variables[next_var]
 
+        if variable.rag_content == None and variable.use_internet == True:
+
+            start_messages = [
+                        {"role": "system", "content": "Based on the information provided by the user, write a search query string for a Google Search"},
+                        {"role": "user", "content": f"{variable.name} {variable.note}"},
+                ]
+            
+            keyword = self.variation_model.ask(system_prompt=start_messages[0],
+                                               messages=start_messages,
+                                               max_tokens=30,
+                                               temperature=1)
+
+            variable.rag_content = extract_content_from_internet(keyword=keyword)
+
         variations = self.generate_prompt_variable(variable_name=next_var, prompt_text=current_prompt, current_variable=variable)
 
         # Recursively generate combinations for the rest of the variables
@@ -351,10 +398,15 @@ class DataGenerator:
 
         evol_instruct_prompt = evol_prompt_template.format(number_of_prompts=str(self.template.prompt_variation_number), prompt=initial_prompt)
 
+        start_messages = [
+                        {"role": "system", "content": "Answer as a valid JSON like {\"prompts\": [\"XXXX\", \"YYYY\"]}"},
+                        {"role": "user", "content": evol_instruct_prompt},
+                ]
+
         diversified_prompt_list = self.variation_model.ask(system_prompt="Answer as a valid JSON like {\"prompts\": [\"XXXX\", \"YYYY\"]}",
-                                                            user_prompt=evol_instruct_prompt, 
-                                                            max_tokens=512, 
+                                                            max_tokens=512,
                                                             temperature=1,
+                                                            messages=start_messages,
                                                             json_mode=True)
         
         evol_instruct_generated_prompt_list = json.loads(diversified_prompt_list)["prompts"]
@@ -390,10 +442,10 @@ class DataGenerator:
 
                     prompt_list = self.generate_evol_instruct_prompt(initial_prompt=initial_prompt)
 
-                for prompt_text in prompt_list:
+                for prompt_text in prompt_list[:self.template.prompt_variation_number]:
 
                     completion_parameters = self.contextual_completion_generation(prompt_text=prompt_text, completion=completion, variables=completion_variables, current_variation_dict={}, fixed_variables=self.template.completion_variables)
-
+                    
                     print(completion_parameters)
 
                     for completion_param in completion_parameters:
