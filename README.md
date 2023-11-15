@@ -10,7 +10,7 @@
 
 - Data anonymization 
 
-- (SOON) Quality enhancement with RAG from sources (Internet, local files etc)
+- Quality enhancement with RAG from Internet and local files
 
 - (SOON) Data augmentation 
 
@@ -30,7 +30,7 @@ pip install --upgrade opendatagen
 export OPENAI_API_KEY='your_openai_api_key'
 ```
 
-### Setting up the SERPLY API key (optional)
+### Setting up the SERPLY API key for Google Search API (optional)
 
 ```bash
 export SERPLY_API_KEY='your_serply_api_key'

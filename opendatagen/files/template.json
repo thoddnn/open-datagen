@@ -1,16 +1,36 @@
 {
     "product-review": {
-        "description": "Structured prompt for product reviews.",
-        "prompt": "Write a review of '{product_name}' made by {brand}:",
-        "prompt_variation_number":2,
-        "completion": "{review}.\n\nRating: {rating}/10[END]",
+        "description": "Apple product reviews.",
+        "prompt": "Write a review of '{product_name}'",
+        "prompt_variation_number":3,
+        "source_internet": {"keywords":["List of all Apple products"]},
+        "completion": "{short_review}.\n\nRating: {rating}/10",
         "prompt_variables": {
-            "product_name": {"name": "Product name", "generation_number":2, "temperature":1, "max_tokens":10, "note": "It must be real-world Apple products"},
-            "brand": {"name": "Brand", "generation_number":1, "temperature":0, "max_tokens":10}
+            "product_name": {"name": "Product name", "generation_number":20, "temperature":1, "max_tokens":10, "note": ["It must be real-world Apple products"]}
         },
         "completion_variables": {
             "rating": {"name": "Rating", "generation_number":1, "temperature":1, "max_tokens":8, "type":"int", "min_value":0, "max_value":10},
-            "review": {"name": "Review", "generation_number":1, "temperature":1, "max_tokens":126, "use_internet":true, "note":"The review must be very bad and severe", "start_with":["It is bad. ", "It is awful. ", "It very bad. "]}
+            "short_review": {"name": "Short review", "generation_number":1, "temperature":1, "max_tokens":126, "note":["The review must be very bad and severe"], "start_with":["It is bad. ", "It is awful. ", "It very bad. "]}
+        }
+    },
+    "chunk": {
+        "description": "Instruction dataset to finetune an LLM on text-chunking",
+        "prompt": "Write a text published on {popular_website} about {topic}:\n'''{web_scraped_text}'''\n",
+        "completion": "Here is the JSON chunk:\n{chunk_json}",
+        "prompt_variation_number":0,
+        "prompt_variables": {
+            "popular_website": {"name": "Popular website", "generation_number":5, "temperature":1, "max_tokens":20, "note":["Popular website must be real-word one from News, E-commerce, Social platform, Job portal, Real estate category."]},
+            "topic": {"name": "Topic", "generation_number":1, "temperature":1.2, "max_tokens":20, "note":["Topic must be original and diverse"]},
+            "web_scraped_text": {"name": "Web scraped text", "generation_number":1, "temperature":1.2, "max_tokens":2000,
+            "note":[
+                "Text must be long, looks scraped with info like metadata, ads, table of contents, read also and more. Don't use any placeholders in the text like 'Heading', 'Disclaimer', 'Ads'. No verbose",
+                "Text must be long, looks scraped with info like metadata, ads, table of contents, read also and more. Don't use any placeholders in the text like 'Heading', 'Disclaimer', 'Ads'. No verbose"
+            ]
+            }
+        },
+        "completion_variables": {
+            "chunk_json": {"system_prompt":"You are ChunkGPT. ChunkGPT is designed to identify and present key sections of a text without summarizing or altering the content. It outputs a valid JSON structure, where each chunk is represented as an object containing 'first_words' and 'last_words' to delineate the beginning and end of each section. This approach focuses on maintaining the integrity of the original text, providing users with clear reference points to the key sections, without rewriting or summarizing the content. ChunkGPT ensures relevance and context are preserved in each chunk, avoiding the inclusion of non-meaningful text.\nFormat your answer as a valid JSON like this: { 'chunks': [ { 'start': 'abc', 'end': 'hij' }, { 'start': 'klm', 'end': 'uvw' } ] }", 
+            "name": "JSON chunk", "generation_number":1, "temperature":0, "max_tokens":2500, "json_mode":true}
         }
     }
 }

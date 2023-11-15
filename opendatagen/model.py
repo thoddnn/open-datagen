@@ -30,37 +30,11 @@ class OpenAIModel:
 
 class ChatModel(OpenAIModel):
 
-    tools = [
-                    {
-                    "name": "extract_content_from_internet",
-                    "description": "Search on Google for a specific keywords and return article content",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                        "keyword": {"type": "string", "description": "The keyword to search for on Google Search"}
-                        },
-                        "required": ["keyword"]
-                    }
-                    
-                },
-                {
-                "name": "get_stock_price",
-                "description": "Get the current stock price",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                    "symbol": {
-                        "type": "string",
-                        "description": "The stock symbol"
-                    }
-                    },
-                    "required": ["symbol"]
-                }
-            } ]
+    tools = []
 
 
     #@retry(stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
-    def ask(self, system_prompt:str, max_tokens:int, temperature:int, messages:list, json_mode=False, seed:int =None, use_tools:bool=False) -> str: 
+    def ask(self, max_tokens:int, temperature:int, messages:list, json_mode=False, seed:int =None, use_tools:bool=False) -> str: 
         
         param = {
             
