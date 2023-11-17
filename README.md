@@ -12,9 +12,9 @@
 
 - Quality enhancement with RAG from Internet and local files
 
-- (SOON) Data augmentation 
+- (SOON) Data evaluation & cleaning agent
 
-- (SOON) Data evaluation 
+- (SOON) Open-source model support (+ local inference)
 
 - (SOON) Multimodality
 
