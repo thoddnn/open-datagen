@@ -9,12 +9,16 @@ from urllib.parse import quote_plus
 import requests
 import trafilatura
 from PyPDF2 import PdfReader
+import pandas as pd
 
 class RAGLocalPath(BaseModel):
 
-    localPath:str = None 
-    directoryPath:str = None 
-    content: str = None  
+    localPath:Optional[str] = None 
+    directoryPath:Optional[str] = None 
+    content:Optional[str] = None 
+
+    class Config:
+        extra = "forbid"
 
     def get_content_from_file(self):
         """
@@ -24,7 +28,9 @@ class RAGLocalPath(BaseModel):
         file_content = ''
         if self.localPath.endswith('.csv'):
             df = pd.read_csv(self.localPath)
-            file_content = df.to_string(header=True, index=False)
+            df = df.astype(str)
+            file_content = df.to_string(header=True, index=False, max_rows=None)
+            print(file_content)
         elif self.localPath.endswith('.txt'):
             with open(self.localPath, 'r') as file:
                 file_content = file.read()
@@ -35,6 +41,7 @@ class RAGLocalPath(BaseModel):
         else:
             raise ValueError("Unsupported file format")
 
+        self.content = file_content
         return file_content
 
     def get_content_from_directory(self):
@@ -143,6 +150,7 @@ class Variable(BaseModel):
     system_prompt: Optional[str] = "No verbose."
     source_internet: Optional[RAGInternet] = None
     source_localfile: Optional[RAGLocalPath] = None
+    source_localdirectory: Optional[RAGLocalPath] = None
     type: Optional[str] = None # like 'int' in your example
     min_value: Optional[int] = None # constrain integer to be >= 0
     max_value: Optional[int] = None
@@ -151,7 +159,6 @@ class Variable(BaseModel):
     start_with: Optional[List[str]] = None
     note: Optional[List[str]] = None
     rag_content: Optional[str] = None
-    localfile_rag_content: Optional[str] = None
 
     class Config:
         extra = "forbid"  # This will raise an error for extra fields
@@ -164,10 +171,10 @@ class Variable(BaseModel):
             self.rag_content = self.source_internet.extract_content_from_internet()
 
         if self.source_localfile is not None:
-            self.localfile_rag_content = self.source_localfile.get_content_from_file()
+            self.rag_content = self.source_localfile.get_content_from_file()
         
-        if self.source_localfile is not None:
-            self.localfile_rag_content = self.source_localfile.get_content_from_directory()
+        if self.source_localdirectory is not None:
+            self.rag_content = self.source_localfile.get_content_from_directory()
             
     
     

@@ -21,7 +21,7 @@ load_dotenv()
 class DataGenerator:
 
     output_array = []
-
+    
     def __init__(self, template:Template, variation_model:ChatModel, completion_model:ChatModel):
 
         self.template = template
@@ -292,8 +292,7 @@ class DataGenerator:
                         {"role": "user", "content": evol_instruct_prompt},
                 ]
 
-        diversified_prompt_list = self.variation_model.ask(system_prompt="Answer as a valid JSON like {\"prompts\": [\"XXXX\", \"YYYY\"]}",
-                                                            max_tokens=512,
+        diversified_prompt_list = self.variation_model.ask(max_tokens=512,
                                                             temperature=1,
                                                             messages=start_messages,
                                                             json_mode=True)

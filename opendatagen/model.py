@@ -59,7 +59,7 @@ class ChatModel(OpenAIModel):
         completion = self.client.chat.completions.create(**param)
 
         #if completion.choices[0].finish_reason == "stop":
-
+        
         answer = completion.choices[0].message.content
 
         return answer 

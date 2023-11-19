@@ -15,22 +15,23 @@
     },
     "chunk": {
         "description": "Instruction dataset to finetune an LLM on text-chunking",
-        "prompt": "Write a text published on {popular_website} about {topic}:\n'''{web_scraped_text}'''\n",
-        "completion": "Here is the JSON chunk:\n{chunk_json}",
-        "prompt_variation_number":0,
+        "prompt": "Write an article about {topic}",
+        "completion": "Article:\n'''{article_content}'''\n\nHere is the JSON chunk:\n{chunk_json}",
+        "prompt_variation_number":1,
         "prompt_variables": {
-            "popular_website": {"name": "Popular website", "generation_number":5, "temperature":1, "max_tokens":20, "note":["Popular website must be real-word one from News, E-commerce, Social platform, Job portal, Real estate category."]},
-            "topic": {"name": "Topic", "generation_number":1, "temperature":1.2, "max_tokens":20, "note":["Topic must be original and diverse"]},
-            "web_scraped_text": {"name": "Web scraped text", "generation_number":1, "temperature":1.2, "max_tokens":2000,
-            "note":[
-                "Text must be long, looks scraped with info like metadata, ads, table of contents, read also and more. Don't use any placeholders in the text like 'Heading', 'Disclaimer', 'Ads'. No verbose",
-                "Text must be long, looks scraped with info like metadata, ads, table of contents, read also and more. Don't use any placeholders in the text like 'Heading', 'Disclaimer', 'Ads'. No verbose"
-            ]
-            }
+            "topic": {"name": "Topic", "generation_number":100, "temperature":1.1, "max_tokens":20, "note":["Topic can be a specific domain, general domain or about a personality and must not be about AI or Sustainability"]}
         },
         "completion_variables": {
-            "chunk_json": {"system_prompt":"You are ChunkGPT. ChunkGPT is designed to identify and present key sections of a text without summarizing or altering the content. It outputs a valid JSON structure, where each chunk is represented as an object containing 'first_words' and 'last_words' to delineate the beginning and end of each section. This approach focuses on maintaining the integrity of the original text, providing users with clear reference points to the key sections, without rewriting or summarizing the content. ChunkGPT ensures relevance and context are preserved in each chunk, avoiding the inclusion of non-meaningful text.\nFormat your answer as a valid JSON like this: { 'chunks': [ { 'start': 'abc', 'end': 'hij' }, { 'start': 'klm', 'end': 'uvw' } ] }", 
-            "name": "JSON chunk", "generation_number":1, "temperature":0, "max_tokens":2500, "json_mode":true}
+            "article_content": {"name": "Article content", "generation_number":1, "temperature":1.2, "max_tokens":2000,
+            "note":[
+                "The article must be long and contain data table or tables of content. The article must be noisy containing, ads, read also, and metadata information. Don't use any placeholders in your answer like 'Introduction', 'Conclusion', 'Heading', 'Disclaimer', 'Ads' etc. No verbose."
+            ]
+            },
+            "chunk_json": {"system_prompt":"You are ChunkGPT. You are refined to focus on extracting only the most relevant text sections that would be useful for AI models like ChatGPT to answer questions about the text. This involves specifically excluding elements such as 'Contact Us', social sharing buttons, CTA (Call To Action) sections, ads, 'read also' sections, footers and headers. The goal is to identify and present the core content of a text, filtering out all extraneous elements. The output remains in a valid JSON structure, with each chunk represented as an object containing 'first_words' and 'last_words', ensuring a clear and concise presentation of the key text sections. This selective approach aims to provide users with the most pertinent information, excluding any distractions or irrelevant content, thus enhancing the usefulness of the extracted text for AI-based question-answering.\nFormat your answer as a valid JSON like this: { 'chunks': [ { 'start': 'abc', 'end': 'hij' }, { 'start': 'klm', 'end': 'uvw' } ] }", 
+                "name": "JSON chunk", "generation_number":1, "temperature":0, "max_tokens":1000, "json_mode":true, "source_localfile": {"localPath":"seed_examples.txt"}
+        }
+            
         }
     }
+    
 }
