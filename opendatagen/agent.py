@@ -5,6 +5,7 @@ import pandas as pd
 
 class DataAgent:
 
+    initial_df:pd.DataFrame = None 
     data_frame:pd.DataFrame = None
     data_to_correct:str = None 
     initial_issue:str = None 
@@ -14,6 +15,12 @@ class DataAgent:
     
     current_correction:str = None 
     successful_conversation_list:list = None 
+
+    start_line_to_analyse:int = None 
+    last_line_to_analyse:int = None 
+    specific_lines_to_analyse:list = None 
+
+    
 
     system_prompt = """
         You are CSVGPT, a GPT specialized in evaluating and correcting CSV files. Your key functions involve:
@@ -67,7 +74,16 @@ class DataAgent:
                 "parameters": {
                     "type": "object",
                     "properties": {
-                    "file_path": {"type": "string", "description": "The CSV file path"}
+                        "file_path": {"type": "string", "description": "The CSV file path"},
+                        "start_line": {"type": "integer", "description": "The first CSV line where the user want to start the process"},
+                        "end_line": {"type": "integer", "description": "The last CSV line where the user want to end the process"},
+                        "specific_lines": {
+                                "type": "array",
+                                "items": {
+                                    "type": "integer"
+                                },
+                                "description": "Must be an array of the CSV line index to process, if specified",
+                            },
                     },
                     "required": ["file_path"]
                 }
@@ -129,36 +145,66 @@ class DataAgent:
 
     client = OpenAI()
 
-    #gpt-4-1106-preview
     def __init__(self, model_name="gpt-4-1106-preview"):
         self.model_name = model_name
         self.client.api_key = os.environ.get("OPENAI_API_KEY")
 
-    def load_csv(self, file_path:dict):
+    def load_csv(self, params:dict):
         """
         Load a CSV file into a DataFrame.
         """
+        file_path_str = params.get("file_path")
 
-        file_path = file_path.get("file_path")
+        self.start_line_to_analyse = params.get("start_line", None)
+        self.last_line_to_analyse = params.get("end_line", None)
+        self.specific_lines_to_analyse = params.get("specific_lines", None)
+
+        nrows = None 
+        
+        self.initial_df = pd.read_csv(file_path_str)
         
         try:
+            
+            if self.specific_lines_to_analyse is not None:
 
-            self.data_frame = pd.read_csv(file_path)
+                skiprows = [i for i in range(len(self.initial_df)) if i not in self.specific_lines_to_analyse]
 
-            self.csv_path = file_path
+                skiprows = [num for num in skiprows if num != 0] #Keep the header
 
-            return "CSV successfully loaded."
+            elif self.start_line_to_analyse is not None and self.last_line_to_analyse is not None and self.last_line_to_analyse >= self.start_line_to_analyse:
+                
+                skiprows = range(self.start_line_to_analyse)  # Skip rows up to start_line
+                nrows = self.last_line_to_analyse - self.start_line_to_analyse + 1
+
+            else:
+
+                skiprows = None
+                nrows = None
+
+            
+            self.data_frame = pd.read_csv(file_path_str, skiprows=skiprows, nrows=nrows)
+
+            self.csv_path = file_path_str
+
+            return "CSV successfully loaded. Now let's ask the user about the specific evaluations or corrections they need."
         
         except Exception as e:
+
+            print(e)
             return f"Error loading file: {e}"
         
     def ask_user_for_file_path(self):
         """
         Ask the user about the CSV file path.
         """
-        user_input = "Here is the CSV file path:" + input("Please specify the file path of your CSV:")
+        file_path = input("Please specify the file path of your CSV:") 
 
-        return user_input
+        process_detail = input("Please specify the lines you want to process. First line is 0 (optional)")
+
+        if process_detail:
+            return "Here is the CSV file path: '" + file_path + "'. And the CSV lines to process (first line is 0): " + process_detail
+        else:
+            return "Here is the CSV file path: '" + file_path + "'"
     
     def ask_user_for_precision(self, message):
         """
@@ -180,7 +226,7 @@ class DataAgent:
 
         self.initial_issue = user_input 
 
-        return user_input + ". Now let's identify issues"
+        return user_input + ". Now let's identify issues with the function identify_issue"
 
     def identify_issue(self, issue:dict):
         """
@@ -208,12 +254,8 @@ class DataAgent:
         
         # Iterate over each row in the DataFrame
         for index, row in self.data_frame.iterrows():
-
-            # Iterate over each column in the row
-            #csv_line = "|| ".join([f"{col}: {row[col]}" for col in self.columns_to_analyse if col in row])
-            #csv_line = row.to_string()
+            
             csv_data_str = "\n\n".join([f"{col} value:\n'''\n{row[col]}\n'''" for col in self.columns_to_analyse if col in row])
-
 
             issue_user_prompt = f"""
                                     Issue: 
@@ -239,13 +281,25 @@ class DataAgent:
                 
                 self.data_to_correct = csv_data_str
 
-                self.current_row_to_correct = index
+                if self.specific_lines_to_analyse:
+
+                    self.current_row_to_correct = self.specific_lines_to_analyse[index]
+
+                else:
+
+                    self.current_row_to_correct = index
 
                 return f"I have detected an issue at the line {index} of the CSV. Now propose a correction"
             
             else:
+                
+                if self.specific_lines_to_analyse:
 
-                log_to_print = f"No issue detected for the line {index}"
+                    log_to_print = f"No issue detected for the line {self.specific_lines_to_analyse[index]}"
+
+                else:
+
+                    log_to_print = f"No issue detected for the line {index}"
 
                 print(log_to_print)
 
@@ -333,7 +387,7 @@ class DataAgent:
         extract_answer_system_prompt = """ 
         Given the old answer and the new answer provided by the user. 
         You must rewrite the new answer with the same format as the old. 
-
+        
         Example:
 
         Old answer: 
@@ -389,9 +443,9 @@ class DataAgent:
         """
 
         if self.current_correction is not None and self.column_to_modify is not None and self.current_row_to_correct is not None:
-
-            self.data_frame.loc[self.current_row_to_correct, self.column_to_modify] = self.current_correction
-            self.data_frame.to_csv(self.csv_path, index=False)
+            
+            self.initial_df.loc[self.current_row_to_correct, self.column_to_modify] = self.current_correction
+            self.initial_df.to_csv(self.csv_path, index=False)
 
             return "The data is corrected in the file. Great work. End of the conversation."
         
@@ -455,7 +509,7 @@ class DataAgent:
                 messages.append({"role":"user", "content":result})
 
             elif completion.choices[0].finish_reason == "stop":
-
+                
                 print(completion.choices[0].message.content)
                 print("END OF CONVERSATION")
                 break
@@ -465,3 +519,16 @@ class DataAgent:
                 print(completion.choices[0].message.content)
                 print("END OF CONVERSATION")
                 break 
+
+    def indices_to_ignore(self, dataframe, rows_to_keep):
+        """
+        Returns a list of indices to ignore for a given pandas DataFrame.
+
+        :param dataframe: pandas DataFrame from which indices are derived.
+        :param rows_to_keep: List of integer indices of rows that should be kept.
+        :return: List of integer indices of rows to ignore.
+        """
+        all_indices = set(range(len(dataframe)))  # Generate a set of all row indices
+        indices_to_keep = set(rows_to_keep)       # Convert rows_to_keep to a set for efficient removal
+        return list(all_indices - indices_to_keep)  # Return the difference as a list
+
