@@ -2,6 +2,7 @@ from openai import OpenAI
 import os 
 import json 
 import pandas as pd 
+import copy 
 
 class DataAgent:
 
@@ -15,16 +16,17 @@ class DataAgent:
     
     current_correction:str = None 
     successful_conversation_list:list = None 
+    good_examples:list = None 
+    good_example_column:str = None
 
     start_line_to_analyse:int = None 
     last_line_to_analyse:int = None 
     specific_lines_to_analyse:list = None 
 
-    
 
     system_prompt = """
         You are CSVGPT, a GPT specialized in evaluating and correcting CSV files. Your key functions involve:
-        1. Requesting the CSV file path. (use ask_user_for_file_path then load_csv)
+        1. Requesting the CSV file path. (use ask_user_for_file_path then load_csv function)
         2. Asking users about the specific evaluations or corrections they need. (use ask_user_for_evaluation_criteria)
         3. Identifying issues. (use identify_issue)
         4. Confirming detected issues and proposed corrections with users. No verbose. (use confirm_and_propose_corrections)
@@ -40,6 +42,10 @@ class DataAgent:
         In situations of ambiguity, you actively seek clarifications to provide precise assistance.
         Your interactions are always consent-driven, emphasizing clarity and user preferences.
     """
+
+    messages = [
+            {"role":"system", "content":system_prompt},
+        ]
 
     functions = [
             {
@@ -76,14 +82,15 @@ class DataAgent:
                     "properties": {
                         "file_path": {"type": "string", "description": "The CSV file path"},
                         "start_line": {"type": "integer", "description": "The first CSV line where the user want to start the process"},
-                        "end_line": {"type": "integer", "description": "The last CSV line where the user want to end the process"},
+                        "end_line": {"type": "integer", "description": "The last CSV line where the user want to end the process."},
+                        "delimiter": {"type": "string", "description": "The delimiter for the CSV file. Default is ','", "enum": [";", ","]},
                         "specific_lines": {
                                 "type": "array",
                                 "items": {
                                     "type": "integer"
                                 },
                                 "description": "Must be an array of the CSV line index to process, if specified",
-                            },
+                            }
                     },
                     "required": ["file_path"]
                 }
@@ -112,7 +119,15 @@ class DataAgent:
                                 },
                                 "description": "Must be an array of the column's name to analyse.",
                             },
-                            "column_to_correct": {"type": "string", "description": "Must be the column name to correct"}
+                            "column_to_correct": {"type": "string", "description": "Must be the column name to correct"},
+                            "good_examples": {
+                                "type": "array",
+                                "items": {
+                                    "type": "integer"
+                                },
+                                "description": "Must be an array of the CSV line index where the issue is correctly handled.",
+                            },
+                            "good_example_column": {"type": "string", "description": "Must be the column name where the good examples are"},
                         },
                         "required": ["columns_name", "column_to_correct"]
                 }
@@ -144,7 +159,7 @@ class DataAgent:
     ]
 
     client = OpenAI()
-
+    #gpt-4-1106-preview
     def __init__(self, model_name="gpt-4-1106-preview"):
         self.model_name = model_name
         self.client.api_key = os.environ.get("OPENAI_API_KEY")
@@ -154,35 +169,17 @@ class DataAgent:
         Load a CSV file into a DataFrame.
         """
         file_path_str = params.get("file_path")
+        self.delimiter = params.get("delimiter", ",")
 
-        self.start_line_to_analyse = params.get("start_line", None)
-        self.last_line_to_analyse = params.get("end_line", None)
-        self.specific_lines_to_analyse = params.get("specific_lines", None)
-
-        nrows = None 
-        
-        self.initial_df = pd.read_csv(file_path_str)
+        #self.initial_df = pd.read_csv(file_path_str, delimiter=self.delimiter, header=None)
         
         try:
             
-            if self.specific_lines_to_analyse is not None:
+            self.data_frame = pd.read_csv(file_path_str, delimiter=self.delimiter)
 
-                skiprows = [i for i in range(len(self.initial_df)) if i not in self.specific_lines_to_analyse]
-
-                skiprows = [num for num in skiprows if num != 0] #Keep the header
-
-            elif self.start_line_to_analyse is not None and self.last_line_to_analyse is not None and self.last_line_to_analyse >= self.start_line_to_analyse:
-                
-                skiprows = range(self.start_line_to_analyse)  # Skip rows up to start_line
-                nrows = self.last_line_to_analyse - self.start_line_to_analyse + 1
-
-            else:
-
-                skiprows = None
-                nrows = None
-
-            
-            self.data_frame = pd.read_csv(file_path_str, skiprows=skiprows, nrows=nrows)
+            self.start_line_to_analyse = params.get("start_line", None)
+            self.last_line_to_analyse = params.get("end_line", None)
+            self.specific_lines_to_analyse = params.get("specific_lines", None)
 
             self.csv_path = file_path_str
 
@@ -191,7 +188,7 @@ class DataAgent:
         except Exception as e:
 
             print(e)
-            return f"Error loading file: {e}"
+            return f"Error loading file: {e}. Please re-ask for the filepath." 
         
     def ask_user_for_file_path(self):
         """
@@ -199,13 +196,33 @@ class DataAgent:
         """
         file_path = input("Please specify the file path of your CSV:") 
 
-        process_detail = input("Please specify the lines you want to process. First line is 0 (optional)")
+        process_detail = input("Please specify the lines you want to process. Line 1 is the header (optional): ")
+
+        delimiter_input = input("Please specify the delimiter (optional): ")
+
+        if delimiter_input.strip == "":
+            delimiter_input = "The delimiter to use is ','."
+        else: 
+            delimiter_input = f"The delimiter to use is '{delimiter_input}'."
 
         if process_detail:
-            return "Here is the CSV file path: '" + file_path + "'. And the CSV lines to process (first line is 0): " + process_detail
+
+            m = f""" Here is the CSV file path: '{file_path}'
+            And the CSV lines to process (first line is 0): {process_detail}.
+            {delimiter_input}
+            """
+
+            return m
+        
         else:
-            return "Here is the CSV file path: '" + file_path + "'"
-    
+
+            m = f""" Here is the CSV file path: '{file_path}'.
+            {delimiter_input}
+            """
+
+            return m
+            
+       
     def ask_user_for_precision(self, message):
         """
         Ask the user for precision
@@ -224,9 +241,25 @@ class DataAgent:
 
         user_input = input("Please specify the evaluations or corrections needed: ")
 
+        good_examples_input = input("Please provide the lines where the issue is correctly handled: ")
+
+        good_example_column_input = input("Please provide the column where the good examples are: ")
+
         self.initial_issue = user_input 
 
-        return user_input + ". Now let's identify issues with the function identify_issue"
+        m = f"""Here is the evaluation and correction needed:
+            '{user_input}'
+
+            Here are the lines where the issue is correctly handled:
+            '{good_examples_input}'
+
+            Here is the column where good examples are:
+            '{good_example_column_input}'
+
+            Now let's identify issues with the function identify_issue
+            """
+
+        return m
 
     def identify_issue(self, issue:dict):
         """
@@ -234,77 +267,91 @@ class DataAgent:
         """
 
         #issue_string = issue["issue_string"]
-        self.columns_to_analyse = issue["columns_name"]
-        self.column_to_modify = issue["column_to_correct"]
-        
-        """
-        issue_system_prompt = 
-            You are DataDetectiveGPT. Your role is to analyze a diverse range of data types. The focus of the analysis will be directed by the user's input.
-            Based on this input, you must determine if an issue exists within the provided data, responding exclusively with either 'issue identified' or 'issue not identified'.
-            This requires careful examination of the data details provided by the user to accurately ascertain the presence or absence of issues.
-        """
+        self.columns_to_analyse = issue.get("columns_name", None)
+        self.column_to_modify = issue.get("column_to_correct", None) 
+        self.good_examples = issue.get("good_examples", None) 
+        self.good_example_column = issue.get("good_example_column", None) 
 
-        issue_system_prompt = """
-            The user has provided a general issue to correct in a CSV file. 
-            Given this issue, your job is to detect if the issue occurs for the given CSV Data provided.
-            Answer by explaining why you detect an issue or not and finish your explanation by 'issue detected' or 'issue not detected'.
-        """
+        if self.good_examples:
 
-        #header_line = "|| ".join(self.columns_to_analyse)
-        
+            example_line = int(self.good_examples[0]) - 2
+            
+            example = self.data_frame.loc[example_line, self.good_example_column]
+            
+            issue_system_prompt = f"""
+                The user has provided a general issue to correct in a CSV file. 
+                Given this issue, your job is to detect if the issue occurs for the given CSV Data provided.
+                Answer by explaining why you detect an issue or not and finish your explanation by 'issue detected' or 'issue not detected'.
+                Here is one example where the issue is correctly handled:
+                {example}
+            """
+
+        else: 
+
+             issue_system_prompt = """
+                The user has provided a general issue to correct in a CSV file. 
+                Given this issue, your job is to detect if the issue occurs for the given CSV Data provided.
+                Answer by explaining why you detect an issue or not and finish your explanation by 'issue detected' or 'issue not detected'.
+            """
+             
+        indices = self.get_indices_to_analyze(start_line=self.start_line_to_analyse, last_line=self.last_line_to_analyse, specific_lines=self.specific_lines_to_analyse)
+
         # Iterate over each row in the DataFrame
         for index, row in self.data_frame.iterrows():
             
-            csv_data_str = "\n\n".join([f"{col} value:\n'''\n{row[col]}\n'''" for col in self.columns_to_analyse if col in row])
+            adjusted_index = index + 2
+            
+            if adjusted_index in indices:
 
-            issue_user_prompt = f"""
-                                    Issue: 
-                                    '''{self.initial_issue}'''
-                                    
-                                    CSV Data: 
-                                    {csv_data_str}
-                                    
-                                """
+                csv_data_str = "\n\n".join([f"{col} value:\n'''\n{row[col]}\n'''" for col in self.columns_to_analyse if col in row])
 
-            messages = [
+                issue_user_prompt = f"""
+                                        Issue: 
+                                        '''{self.initial_issue}'''
+                                        
+                                        CSV Data: 
+                                        {csv_data_str}
+                                        
+                                    """
 
-                {"role":"system", "content":issue_system_prompt},
-                {"role":"user","content": issue_user_prompt}
+                messages = [
 
-            ]
+                    {"role":"system", "content":issue_system_prompt},
+                    {"role":"user","content": issue_user_prompt}
 
-            completion = self.askgpt(messages, max_tokens=2024, functions=None)
+                ]
 
-            answer = completion.choices[0].message.content
+                completion = self.askgpt(messages, max_tokens=2024, functions=None)
 
-            if "issue detected" in answer.lower():
-                
-                self.data_to_correct = csv_data_str
+                answer = completion.choices[0].message.content
 
-                if self.specific_lines_to_analyse:
-
-                    self.current_row_to_correct = self.specific_lines_to_analyse[index]
-
-                else:
+                if "issue detected" in answer.lower():
+                    
+                    self.data_to_correct = csv_data_str
 
                     self.current_row_to_correct = index
 
-                return f"I have detected an issue at the line {index} of the CSV. Now propose a correction"
-            
-            else:
-                
-                if self.specific_lines_to_analyse:
+                    log_to_print = f"I have detected an issue at line {adjusted_index} of the CSV. Now proposing a correction."
 
-                    log_to_print = f"No issue detected for the line {self.specific_lines_to_analyse[index]}"
+                    print(log_to_print)
+
+                    # Creating a copy of self.messages for recursive processing
+                    messages_copy = copy.deepcopy(messages)
+                    messages_copy.append({"role": "assistant", "content": log_to_print})
+
+                    # Recursive call to run method with the copied messages
+                    self.run(messages=messages_copy)
+
+                    # After returning from the recursive call, continue processing the next lines
+                    continue
 
                 else:
+                    
+                    log_to_print = f"No issue detected for the line {adjusted_index}"
 
-                    log_to_print = f"No issue detected for the line {index}"
-
-                print(log_to_print)
-
-
-        return "I haven't detected any issue. End the conversation."
+                    print(log_to_print)
+ 
+        return "All the CSV row has been processed. End the conversation."
 
     def confirm_and_propose_corrections(self):
         """
@@ -444,8 +491,8 @@ class DataAgent:
 
         if self.current_correction is not None and self.column_to_modify is not None and self.current_row_to_correct is not None:
             
-            self.initial_df.loc[self.current_row_to_correct, self.column_to_modify] = self.current_correction
-            self.initial_df.to_csv(self.csv_path, index=False)
+            self.data_frame.loc[self.current_row_to_correct, self.column_to_modify] = self.current_correction
+            self.data_frame.to_csv(self.csv_path, index=False, sep=self.delimiter)
 
             return "The data is corrected in the file. Great work. End of the conversation."
         
@@ -459,7 +506,8 @@ class DataAgent:
         
         param = {
             "model": self.model_name,
-            "messages": messages
+            "messages": messages,
+            "temperature": temperature
         }
 
         if functions:
@@ -483,19 +531,16 @@ class DataAgent:
 
         return result
     
-    def run(self):
+    def run(self, messages=None):
+
+        if messages is None:
+            messages = self.messages
 
         #RUN AGENT 
-        messages = [
-            {"role":"system", "content":self.system_prompt},
-        ]
-        
         while True:
 
             completion = self.askgpt(messages, functions=self.functions) 
 
-            print(completion)
-            
             if completion.choices[0].finish_reason == "function_call":
 
                 #answer = completion.choices[0].message.content
@@ -532,3 +577,24 @@ class DataAgent:
         indices_to_keep = set(rows_to_keep)       # Convert rows_to_keep to a set for efficient removal
         return list(all_indices - indices_to_keep)  # Return the difference as a list
 
+    def get_indices_to_analyze(self, start_line, last_line, specific_lines):
+
+        indices_to_analyze = set()
+
+        # If only start_line is specified
+        if start_line is not None and last_line is None:
+            indices_to_analyze.add(start_line)
+
+        # If only last_line is specified
+        elif start_line is None and last_line is not None:
+            indices_to_analyze.update(range(0, last_line + 1))
+
+        # If both start_line and last_line are specified
+        elif start_line is not None and last_line is not None:
+            indices_to_analyze.update(range(start_line, last_line + 1))
+
+        # Add specific lines if specified
+        if specific_lines is not None:
+            indices_to_analyze.update(specific_lines)
+
+        return indices_to_analyze
