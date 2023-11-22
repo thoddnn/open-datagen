@@ -76,7 +76,7 @@ class DataAgent:
             {
                 
                 "name": "load_csv",
-                "description": "Load a CSV file into a DataFrame from the file path provided by the user",
+                "description": "Load a CSV file into a DataFrame from the file path provided by the user. If the user provide only one line to process, you must return a value for start_line and end_line",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -178,7 +178,9 @@ class DataAgent:
             self.data_frame = pd.read_csv(file_path_str, delimiter=self.delimiter)
 
             self.start_line_to_analyse = params.get("start_line", None)
-            self.last_line_to_analyse = params.get("end_line", None)
+
+            self.last_line_to_analyse = min(params.get("end_line", len(self.data_frame.index) + 1) , len(self.data_frame.index) + 1)
+
             self.specific_lines_to_analyse = params.get("specific_lines", None)
 
             self.csv_path = file_path_str
@@ -194,11 +196,12 @@ class DataAgent:
         """
         Ask the user about the CSV file path.
         """
-        file_path = input("Please specify the file path of your CSV:") 
 
-        process_detail = input("Please specify the lines you want to process. Line 1 is the header (optional): ")
+        file_path = input("Please specify the file path of your CSV: ")
 
         delimiter_input = input("Please specify the delimiter (optional): ")
+
+        process_detail = input("Please specify the lines you want to process. Line 1 is the header (optional): ")
 
         if delimiter_input.strip == "":
             delimiter_input = "The delimiter to use is ','."
@@ -208,14 +211,14 @@ class DataAgent:
         if process_detail:
 
             m = f""" Here is the CSV file path: '{file_path}'
-            And the CSV lines to process (first line is 0): {process_detail}.
+            And the CSV lines to process: {process_detail}.
             {delimiter_input}
             """
 
             return m
         
         else:
-
+            
             m = f""" Here is the CSV file path: '{file_path}'.
             {delimiter_input}
             """
@@ -234,31 +237,53 @@ class DataAgent:
     def ask_user_for_evaluation_criteria(self):
         """
         Ask the user about the specific evaluations or corrections they need.
-        
-        Returns:
-        str: User input regarding the required evaluations or corrections.
         """
 
         user_input = input("Please specify the evaluations or corrections needed: ")
 
-        good_examples_input = input("Please provide the lines where the issue is correctly handled: ")
-
-        good_example_column_input = input("Please provide the column where the good examples are: ")
-
         self.initial_issue = user_input 
 
-        m = f"""Here is the evaluation and correction needed:
-            '{user_input}'
+        m = ""
 
-            Here are the lines where the issue is correctly handled:
-            '{good_examples_input}'
+        while True:
 
-            Here is the column where good examples are:
-            '{good_example_column_input}'
+            is_good_examples = input("Is there any rows where this issue is correctly handled (y/n)")
 
-            Now let's identify issues with the function identify_issue
-            """
+            if is_good_examples.lower() in ['y', 'n']:
 
+                if is_good_examples.lower() == 'y':
+
+                    good_examples_input = input("Please provide a line where the issue is correctly handled: ")
+
+                    good_example_column_input = input("Please provide the column where the issue is correctly handled: ")
+                
+                    m = f"""Here is the evaluation and correction needed:
+                        '{user_input}'
+
+                        Here are the lines where the issue is correctly handled:
+                        '{good_examples_input}'
+
+                        Here is the column where good examples are:
+                        '{good_example_column_input}'
+
+                        Now let's identify issues with the function identify_issue
+                        """
+                    
+                    break
+                
+                else:
+
+                    m = f"""Here is the evaluation and correction needed:
+                        '{user_input}'
+
+                        There is no lines where the issue is correctly handle.
+
+                        Now let's identify issues with the function identify_issue
+                    """
+
+                    break 
+
+        
         return m
 
     def identify_issue(self, issue:dict):
@@ -578,23 +603,38 @@ class DataAgent:
         return list(all_indices - indices_to_keep)  # Return the difference as a list
 
     def get_indices_to_analyze(self, start_line, last_line, specific_lines):
-
         indices_to_analyze = set()
 
-        # If only start_line is specified
-        if start_line is not None and last_line is None:
-            indices_to_analyze.add(start_line)
+        # Adjust for the offset in the loop
+        offset = 0
 
-        # If only last_line is specified
-        elif start_line is None and last_line is not None:
-            indices_to_analyze.update(range(0, last_line + 1))
+        # Check if all parameters are None
+        if start_line is None and last_line is None and specific_lines is None:
+            # Add all indices adjusted by the offset
+            indices_to_analyze.update(range(offset, len(self.data_frame) + offset))
 
-        # If both start_line and last_line are specified
-        elif start_line is not None and last_line is not None:
-            indices_to_analyze.update(range(start_line, last_line + 1))
+        else:
+            # Prioritize specific lines if specified
+            if specific_lines is not None:
+                adjusted_specific_lines = [line + offset for line in specific_lines]
+                indices_to_analyze.update(adjusted_specific_lines)
 
-        # Add specific lines if specified
-        if specific_lines is not None:
-            indices_to_analyze.update(specific_lines)
+            # If only start_line is specified
+            elif start_line is not None and last_line is None:
+                indices_to_analyze.add(start_line + offset)
+
+            # If only last_line is specified
+            elif start_line is None and last_line is not None:
+                indices_to_analyze.update(range(offset, last_line + 1 + offset))
+
+            # If both start_line and last_line are specified
+            elif start_line is not None and last_line is not None:
+                # Only add range if specific_lines is None
+                if specific_lines is None:
+                    indices_to_analyze.update(range(start_line + offset, last_line + 1 + offset))
+
+            else:
+
+                return indices_to_analyze
 
         return indices_to_analyze
