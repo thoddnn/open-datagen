@@ -4,15 +4,13 @@
 
 ## Features
 
-- Generate synthetic datasets with a fixed format using:
-    - User-defined template with pydantic object
-    - Predefined templates
-
-- Data anonymization 
+- Generate high-quality synthetic datasets using simple templates
 
 - Quality enhancement with RAG from Internet and local files
 
-- (SOON) Data evaluation & cleaning agent
+- Data anonymization 
+
+- Data evaluation & cleaning agent
 
 - (SOON) Open-source model support (+ local inference)
 
@@ -38,7 +36,7 @@ export SERPLY_API_KEY='your_serply_api_key'
 
 ## Usage
 
-Example: If you want to train a small model to write great python code
+Example: Generate a dataset of Python exercises using a template
 
 ```python
 from opendatagen.data_generator import DataGenerator
@@ -79,29 +77,15 @@ data = generator.generate_data(output_path="output.csv")
 print(data)
 ```
 
-This code will generate a dataset of 5 medium-level Python exercises/answers formatted as you asked for.
-
-### Predefined Templates:
+Once created, you can ask an AI Agent to evaluate and correct your dataset
 
 ```python
-from opendatagen.data_generator import DataGenerator
-from opendatagen.model import LLM
-from opendatagen.template import TemplateManager, TemplateName
+from opendatagen.agent import DataAgent
 
-variation_model = LLM.load_chat.GPT_35_TURBO_CHAT
-completion_model = LLM.load_instruct.GPT_35_TURBO_INSTRUCT
-
-manager = TemplateManager()
-template = manager.get_template(TemplateName.PRODUCT_REVIEW)
-
-generator = DataGenerator(template=template, variation_model=variation_model, completion_model=completion_model)
-
-data = generator.generate_data(output_path="output.csv")
-
-print(data)
+agent = DataAgent()
+    
+agent.run()
 ```
-
-You can find the templates in the [template.json](https://github.com/thoddnn/open-datagen/blob/main/opendatagen/files/template.json) file.
 
 ## Contribution 
 
@@ -109,7 +93,7 @@ We welcome contributions to Open Datagen! Whether you're looking to fix bugs, ad
   
 ## Note 
 
-Please note that `opendatagen` is initially powered by OpenAI's models. Be aware of potential biases and use the `start_with` and `note` field to guide outputs.
+Please note that `opendatagen` is initially powered by OpenAI's models. Be aware of potential biases and use the `note` field to guide outputs.
 
 ## Acknowledgements
 
