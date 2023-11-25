@@ -4,7 +4,7 @@ from enum import Enum
 import os 
 import json 
 from opendatagen.utils import load_file
-from opendatagen.model import OpenAIModel
+from opendatagen.model import OpenAIChatModel
 from urllib.parse import quote_plus
 import requests
 import trafilatura
@@ -139,11 +139,18 @@ class RAGInternet(BaseModel):
         self.content = result
         return result
 
-    
+class Validator(BaseModel):
 
+    function_name:str
+    additional_parameters:Optional[List[str]] = None 
+    from_notebook:bool = False
+    retry_number:Optional[int] = 3  
+    
+    
 class Variable(BaseModel):
 
     name: str
+    model_name: Optional[str] = "gpt-4-1106-preview"
     temperature: float
     max_tokens: int
     generation_number: int
@@ -159,25 +166,27 @@ class Variable(BaseModel):
     start_with: Optional[List[str]] = None
     note: Optional[List[str]] = None
     rag_content: Optional[str] = None
+    validator:Optional[Validator] = None 
+    value:Optional[List[str]] = None 
 
     class Config:
         extra = "forbid"  # This will raise an error for extra fields
 
-    def __init__(self, **data):
+    def load_internet_source(self):
 
-        super().__init__(**data)
-        
         if self.source_internet is not None:
             self.rag_content = self.source_internet.extract_content_from_internet()
+    
+    def load_local_file(self):
 
-        if self.source_localfile is not None:
+        if self.source_localfile is not None and self.source_localfile.localPath is not None:
             self.rag_content = self.source_localfile.get_content_from_file()
-        
-        if self.source_localdirectory is not None:
+
+    def load_local_directory(self):
+
+        if self.source_localfile is not None and self.source_localfile.directoryPath is not None:
             self.rag_content = self.source_localfile.get_content_from_directory()
-            
-    
-    
+
 
 class Template(BaseModel):
 
@@ -190,6 +199,7 @@ class Template(BaseModel):
     prompt_variables: Optional[Dict[str, Variable]] = None
     completion_variables: Optional[Dict[str, Variable]] = None
     prompt_variation_number: Optional[int] = 1  
+    value:Optional[List[str]] = None 
 
     class Config:
         extra = "forbid"  # This will raise an error for extra fields
@@ -212,25 +222,27 @@ class Template(BaseModel):
 class TemplateName(Enum):
     PRODUCT_REVIEW = "product-review"
     CHUNK = "chunk"
+    CHUNK2 = "chunk2"
 
 
 class TemplateManager:
 
-    def __init__(self, filename="template.json"):
-        self.template_file_path = self.get_template_file_path(filename)
+    def __init__(self, template_file_path:str):
+        self.template_file_path = self.get_template_file_path(template_file_path)
+        #self.template_file_path = self.get_template_file_path(filename)
         self.templates = self.load_templates()
 
     def get_template_file_path(self, filename: str) -> str:
-        return os.path.join(os.path.dirname(__file__), 'files', filename)
+        return os.path.join(os.path.dirname(__file__), filename)
 
-    def load_templates(self) -> Dict[TemplateName, Template]:
+    def load_templates(self) -> Dict[str, Template]:
         with open(self.template_file_path, 'r') as file:
             raw_data = json.load(file)
 
         templates = {}
         for key, data in raw_data.items():
             try:
-                template_name = TemplateName(key)
+                template_name = key
                 template = Template(**data)
                 templates[template_name] = template
             except ValidationError as e:
@@ -240,19 +252,19 @@ class TemplateManager:
 
         return templates
 
-    def get_template(self, template_name: TemplateName) -> Template:
+    def get_template(self, template_name: str) -> Template:
 
         template = self.templates.get(template_name)
 
         if template:
-
+            
             template.load_internet_source()
             template.load_local_file()
             template.load_local_directory()
 
         return template
 
-def create_variable_from_name(model:OpenAIModel, variable_name:str) -> Variable:
+def create_variable_from_name(model:OpenAIChatModel, variable_name:str) -> Variable:
 
     prompt = load_file(path="files/variable_generation.txt")
 

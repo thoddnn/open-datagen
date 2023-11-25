@@ -12,26 +12,6 @@
             "rating": {"name": "Rating", "generation_number":1, "temperature":1, "max_tokens":8, "type":"int", "min_value":0, "max_value":10},
             "short_review": {"name": "Short review", "generation_number":1, "temperature":1, "max_tokens":126, "note":["The review must be very bad and severe"], "start_with":["It is bad. ", "It is awful. ", "It very bad. "]}
         }
-    },
-    "chunk": {
-        "description": "Instruction dataset to finetune an LLM on text-chunking",
-        "prompt": "Write an article about {topic}",
-        "completion": "Article:\n'''{article_content}'''\n\nHere is the JSON chunk:\n{chunk_json}",
-        "prompt_variation_number":1,
-        "prompt_variables": {
-            "topic": {"name": "Topic", "generation_number":100, "temperature":1.1, "max_tokens":20, "note":["Topic can be a specific domain, general domain or about a personality and must not be about AI or Sustainability"]}
-        },
-        "completion_variables": {
-            "article_content": {"name": "Article content", "generation_number":1, "temperature":1.2, "max_tokens":2000,
-            "note":[
-                "The article must be long and contain data table or tables of content. The article must be noisy containing, ads, read also, and metadata information. Don't use any placeholders in your answer like 'Introduction', 'Conclusion', 'Heading', 'Disclaimer', 'Ads' etc. No verbose."
-            ]
-            },
-            "chunk_json": {"system_prompt":"You are ChunkGPT. You are refined to focus on extracting only the most relevant text sections that would be useful for AI models like ChatGPT to answer questions about the text. This involves specifically excluding elements such as 'Contact Us', social sharing buttons, CTA (Call To Action) sections, ads, 'read also' sections, footers and headers. The goal is to identify and present the core content of a text, filtering out all extraneous elements. The output remains in a valid JSON structure, with each chunk represented as an object containing 'first_words' and 'last_words', ensuring a clear and concise presentation of the key text sections. This selective approach aims to provide users with the most pertinent information, excluding any distractions or irrelevant content, thus enhancing the usefulness of the extracted text for AI-based question-answering.\nFormat your answer as a valid JSON like this: { 'chunks': [ { 'start': 'abc', 'end': 'hij' }, { 'start': 'klm', 'end': 'uvw' } ] }", 
-                "name": "JSON chunk", "generation_number":1, "temperature":0, "max_tokens":1000, "json_mode":true, "source_localfile": {"localPath":"seed_examples.txt"}
-        }
-            
-        }
     }
     
 }

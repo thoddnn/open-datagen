@@ -13,8 +13,9 @@ from opendatagen.utils import dict_to_string, load_file, write_to_csv, generate_
 from opendatagen.utils import snake_case_to_title_case, title_case_to_snake_case
 from opendatagen.utils import extract_content_from_internet
 from opendatagen.anonymizer import Anonymizer
-from opendatagen.model import ChatModel, InstructModel, EmbeddingModel
+from opendatagen.model import OpenAIChatModel, OpenAIInstructModel, OpenAIEmbeddingModel, ModelName
 from opendatagen.template import Template, Variable,  create_variable_from_name
+from opendatagen.utils import function_to_call
 
 load_dotenv()
 
@@ -22,11 +23,9 @@ class DataGenerator:
 
     output_array = []
     
-    def __init__(self, template:Template, variation_model:ChatModel, completion_model:ChatModel):
+    def __init__(self, template:Template):
 
         self.template = template
-        self.variation_model = variation_model
-        self.completion_model = completion_model
 
     def extract_variable_from_string(self, text:str):
         return findall(r'\{(.*?)\}', text)
@@ -49,6 +48,7 @@ class DataGenerator:
         context = prompt_text #generate_context_from_json(variables_dict, variable_name)
 
         name = current_variable.name 
+        model_name = current_variable.model_name
         temperature = current_variable.temperature
         max_tokens = current_variable.max_tokens
         generation_number = current_variable.generation_number 
@@ -77,6 +77,8 @@ class DataGenerator:
 
         variations = []
 
+        variation_model = OpenAIChatModel(model_name=ModelName.GPT_4_TURBO_CHAT.value)
+        
         for _ in range(generation_number):  
 
             temp_variation_prompt = initial_variation_prompt.format(
@@ -88,20 +90,59 @@ class DataGenerator:
                                                         note=note,
                                                         context=context)
 
-            
+            start_messages = [
+                    {"role": "system", "content": "No verbose."},
+                    {"role": "user", "content": temp_variation_prompt},
+            ]
 
-            if isinstance(self.variation_model, InstructModel):
+            if current_variable.validator:
 
-                generated_value = self.variation_model.ask(prompt=temp_variation_prompt, max_tokens=max_tokens, temperature=temperature)
+                count = 1
+
+                while True:
+
+                    if count > current_variable.validator.retry_number:
+                        break 
+
+                    generated_value = variation_model.ask(max_tokens=max_tokens, 
+                                                        temperature=temperature, 
+                                                        messages=start_messages, 
+                                                        json_mode=current_variable.json_mode,
+                                                        seed=current_variable.seed)
+
+                    function_name = current_variable.validator.function_name
+                    from_notebook = current_variable.validator.from_notebook
+                    additional_parameters = current_variable.validator.additional_parameters
+
+                    param_dict = {}
+                    
+                    for param in additional_parameters:
+                        param_dict[param] = self.template.prompt_variables[param].value
+
+                    param_dict["generated_value"] = generated_value
+                    
+                    isValid, new_message = function_to_call(function_name, from_notebook, param_dict)
+
+                    if isValid:
+                        current_variable.value = generated_value
+                        break 
+                    else:
+                        
+                        start_messages.append({"role": "assistant", "content": generated_value})
+                        start_messages.append({"role": "user", "content": new_message})
+                        count = count + 1
 
             else:
-                 
-                start_messages = [
-                        {"role": "system", "content": "No verbose."},
-                        {"role": "user", "content": temp_variation_prompt},
-                ]
+                    
+                generated_value = variation_model.ask(max_tokens=max_tokens, 
+                                                        temperature=temperature, 
+                                                        messages=start_messages, 
+                                                        json_mode=current_variable.json_mode,
+                                                        seed=current_variable.seed)
+                
 
-                generated_value = self.variation_model.ask(max_tokens=max_tokens, temperature=temperature, messages=start_messages)
+                current_variable.value = generated_value
+
 
             last_values_list.append(generated_value)
             
@@ -122,6 +163,7 @@ class DataGenerator:
         temp_variation_prompt = initial_variation_prompt
 
         name = current_variable.name 
+        model_name = current_variable.model_name
         temperature = current_variable.temperature
         max_tokens = current_variable.max_tokens
         generation_number = current_variable.generation_number 
@@ -159,6 +201,8 @@ class DataGenerator:
 
         variations = []
 
+        completion_model = OpenAIChatModel(model_name=model_name)
+
         for _ in range(generation_number):  
 
             temp_variation_prompt = initial_variation_prompt.format(prompt=prompt_text,
@@ -170,20 +214,63 @@ class DataGenerator:
                                                                             type_message=type_message,
                                                                             note=note)
 
-            if isinstance(self.completion_model, InstructModel):
-                generated_value = self.completion_model.ask(prompt=temp_variation_prompt, max_tokens=max_tokens, temperature=temperature)
+            if isinstance(completion_model, OpenAIInstructModel):
+                generated_value = completion_model.ask(prompt=temp_variation_prompt, max_tokens=max_tokens, temperature=temperature)
             else:
                 
                 start_messages = [
                         {"role": "system", "content": current_variable.system_prompt},
                         {"role": "user", "content": temp_variation_prompt},
                 ]
-            
-                generated_value = self.completion_model.ask(max_tokens=max_tokens, 
+
+                if current_variable.validator:
+
+                    count = 1
+
+                    while True:
+
+                        if count > current_variable.validator.retry_number:
+                            break 
+
+                        generated_value = completion_model.ask(max_tokens=max_tokens, 
                                                             temperature=temperature, 
                                                             messages=start_messages, 
                                                             json_mode=current_variable.json_mode,
                                                             seed=current_variable.seed)
+
+                        function_name = current_variable.validator.function_name
+                        from_notebook = current_variable.validator.from_notebook
+                        additional_parameters = current_variable.validator.additional_parameters
+
+                        param_dict = {}
+                        
+                        for param in additional_parameters:
+                            param_dict[param] = self.template.completion_variables[param].value
+                        
+                        param_dict["generated_value"] = generated_value
+                        
+                        isValid, new_message = function_to_call(function_name, from_notebook, param_dict)
+
+                        if isValid:
+                            current_variable.value = generated_value
+                            break 
+                        else:
+                            
+                            start_messages.append({"role": "assistant", "content": generated_value})
+                            start_messages.append({"role": "user", "content": new_message})
+                            count = count + 1
+
+                else:
+                    
+                    
+                    generated_value = completion_model.ask(max_tokens=max_tokens, 
+                                                            temperature=temperature, 
+                                                            messages=start_messages, 
+                                                            json_mode=current_variable.json_mode,
+                                                            seed=current_variable.seed)
+                    
+
+                    current_variable.value = generated_value
 
             last_values_list.append(generated_value)
 
@@ -291,8 +378,10 @@ class DataGenerator:
                         {"role": "system", "content": "Answer as a valid JSON like {\"prompts\": [\"XXXX\", \"YYYY\"]}"},
                         {"role": "user", "content": evol_instruct_prompt},
                 ]
+        
+        evol_instruct_model = OpenAIChatModel(model_name=ModelName.GPT_4_TURBO_CHAT.value)
 
-        diversified_prompt_list = self.variation_model.ask(max_tokens=512,
+        diversified_prompt_list = evol_instruct_model.ask(max_tokens=512,
                                                             temperature=1,
                                                             messages=start_messages,
                                                             json_mode=True)

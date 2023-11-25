@@ -5,6 +5,8 @@ import re
 import requests
 from urllib.parse import quote_plus
 import json 
+import importlib
+
 
 
 def dict_to_string(d):
@@ -167,3 +169,43 @@ def extract_content_from_internet(keyword:str):
     
     return result 
 
+
+def load_user_function(full_function_name:str, from_notebook:bool):
+    if from_notebook:
+        try:
+            from IPython import get_ipython
+            ipython_namespace = get_ipython().user_ns
+        except ImportError:
+            raise EnvironmentError("IPython environment not detected for notebook mode.")
+
+        if full_function_name in ipython_namespace:
+            func = ipython_namespace[full_function_name]
+            if callable(func):
+                return func
+            else:
+                raise TypeError(f"The object '{full_function_name}' in the IPython namespace is not callable.")
+        else:
+            raise ValueError(f"Function '{full_function_name}' not found in the IPython namespace.")
+    else:
+        try:
+            module_name, function_name = full_function_name.rsplit('.', 1)
+            module = importlib.import_module(module_name)
+            func = getattr(module, function_name)
+        except ValueError:
+            raise ValueError(f"Invalid format for function name '{full_function_name}'. Expected 'module.function_name'.")
+        except ImportError:
+            raise ImportError(f"Module '{module_name}' could not be found.")
+        except AttributeError:
+            raise AttributeError(f"Function '{function_name}' not found in module '{module_name}'.")
+
+        if not callable(func):
+            raise TypeError(f"The object '{function_name}' found in module '{module_name}' is not callable.")
+
+        return func
+
+
+def function_to_call(function_name, from_notebook, *args):
+
+    user_function = load_user_function(function_name, from_notebook)
+
+    return user_function(*args)

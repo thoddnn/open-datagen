@@ -1,4 +1,3 @@
-# model.py
 from enum import Enum
 from tenacity import retry, stop_after_attempt, wait_exponential
 from openai import OpenAI
@@ -20,18 +19,15 @@ class ModelName(Enum):
     GPT_4_TURBO_CHAT = "gpt-4-1106-preview"
     TEXT_EMBEDDING_ADA = "text-embedding-ada-002"
 
-class OpenAIModel:
-
-    client = OpenAI()
-    
-    def __init__(self, model_name: ModelName):
-        self.client.api_key = os.getenv("OPENAI_API_KEY")
-        self.model_name = model_name.value
-
-class ChatModel(OpenAIModel):
+class OpenAIChatModel():
 
     tools = []
 
+    client = OpenAI()
+
+    def __init__(self, model_name: str):
+        self.client.api_key = os.getenv("OPENAI_API_KEY")
+        self.model_name = model_name
 
     #@retry(stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
     def ask(self, max_tokens:int, temperature:int, messages:list, json_mode=False, seed:int =None, use_tools:bool=False) -> str: 
@@ -67,9 +63,13 @@ class ChatModel(OpenAIModel):
         #elif completion.choices[0].finish_reason == "length":
         #completion.choices[0].finish_reason == "function_call":
 
-    
+class OpenAIInstructModel():
 
-class InstructModel(OpenAIModel):
+    client = OpenAI()
+
+    def __init__(self, model_name: ModelName):
+        self.client.api_key = os.getenv("OPENAI_API_KEY")
+        self.model_name = model_name.value
 
     @retry(stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
     def ask(self, prompt:str, temperature:int, max_tokens:int, json_mode=False) -> str:
@@ -93,7 +93,13 @@ class InstructModel(OpenAIModel):
         
         return answer
 
-class EmbeddingModel(OpenAIModel):
+class OpenAIEmbeddingModel():
+
+    client = OpenAI()
+    
+    def __init__(self, model_name: ModelName):
+        self.client.api_key = os.getenv("OPENAI_API_KEY")
+        self.model_name = model_name.value
 
     def create_embedding(self, prompt:str):
         embedding = self.client.embeddings.create(
@@ -102,26 +108,4 @@ class EmbeddingModel(OpenAIModel):
         )
 
         return embedding["data"][0]["embedding"]
-
-class LLM:
-    
-    class ChatLoader:
-        GPT_35_TURBO_CHAT = ChatModel(ModelName.GPT_35_TURBO_CHAT)
-        GPT_35_TURBO_16K_CHAT = ChatModel(ModelName.GPT_35_TURBO_16K_CHAT)
-        GPT_4_CHAT = ChatModel(ModelName.GPT_4_CHAT)
-        GPT_4_TURBO_CHAT = ChatModel(ModelName.GPT_4_TURBO_CHAT)
-
-    class InstructLoader:
-
-        GPT_35_TURBO_INSTRUCT = InstructModel(ModelName.GPT_35_TURBO_INSTRUCT)
-        TEXT_DAVINCI_INSTRUCT = InstructModel(ModelName.TEXT_DAVINCI_INSTRUCT)
-        
-    class EmbeddingLoader:
-
-        GPT_35_TURBO_INSTRUCT = EmbeddingModel(ModelName.TEXT_EMBEDDING_ADA)
-
-    load_chat = ChatLoader()
-    load_instruct = InstructLoader()
-    load_embedding = EmbeddingLoader()
-
 

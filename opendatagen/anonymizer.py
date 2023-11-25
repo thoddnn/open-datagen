@@ -1,6 +1,6 @@
 import re
 import spacy
-from opendatagen.model import OpenAIModel, ModelName
+from opendatagen.model import OpenAIChatModel, ModelName
 from opendatagen.utils import load_file
 
 class Anonymizer:
@@ -45,7 +45,7 @@ class Anonymizer:
 
 
 
-    def __init__(self, completion_model:OpenAIModel):
+    def __init__(self, completion_model:OpenAIChatModel):
         
         self.nlp = spacy.load("en_core_web_sm")
         self.ner_prompt = load_file("files/ner.txt")

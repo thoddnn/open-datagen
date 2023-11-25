@@ -1,6 +1,9 @@
 __pycache__/
 *.pyc
 *.csv
+template.json
+*.ipynb
+*.jsonl
 main.py
 *.vscode
 *.egg-info/

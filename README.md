@@ -22,7 +22,7 @@
 pip install --upgrade opendatagen
 ```
 
-### Setting up the OpenAI API key
+### Setting up the OpenAI API key (using openai>=1.2)
 
 ```bash
 export OPENAI_API_KEY='your_openai_api_key'
@@ -43,9 +43,6 @@ from opendatagen.data_generator import DataGenerator
 from opendatagen.model import LLM
 from opendatagen.template import Template, Variable
 
-variation_model = LLM.load_chat.GPT_35_TURBO_CHAT 
-completion_model = LLM.load_instruct.GPT_35_TURBO_INSTRUCT
-
 # Create the custom template using the Pydantic models
 user_template = Template(
     description="Custom template for Python exercises",
@@ -57,7 +54,8 @@ user_template = Template(
             name="Python exercice statement",
             temperature=1,
             max_tokens=120,
-            generation_number=10
+            generation_number=10,
+            model_name="gpt-3.5-turbo-1106"
         )
     },
     completion_variables={
@@ -65,17 +63,24 @@ user_template = Template(
             name="Python code",
             temperature=0,
             max_tokens=256,
-            generation_number=1
+            generation_number=1,
+            model_name="gpt-4"
         )
     }
 )
 
-generator = DataGenerator(template=user_template, variation_model=variation_model, completion_model=completion_model)
+#Or you can load your templates from a json file
+#from opendatagen.template import TemplateManager
+#user_template = TemplateManager("files/template.json")
+#Note: you can find examples of json at https://github.com/thoddnn/open-datagen/blob/main/opendatagen/files/template.json
+
+generator = DataGenerator(template=user_template)
 
 data = generator.generate_data(output_path="output.csv")
 
 print(data)
 ```
+
 
 Once created, you can ask an AI Agent to evaluate and correct your dataset
 
