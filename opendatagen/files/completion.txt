@@ -14,4 +14,6 @@ Don't use any variable between curly brackets, brackets in your answer.
 
 {note}
 
+{rag_content}
+
 {start_with}

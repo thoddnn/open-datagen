@@ -211,7 +211,7 @@ class Template(BaseModel):
             self.rag_content = self.source_internet.extract_content_from_internet()
 
     def load_local_file(self):
-
+        
         if self.source_localfile is not None and self.source_localfile.localPath is not None:
             self.rag_content = self.source_localfile.get_content_from_file()
 

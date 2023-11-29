@@ -62,8 +62,14 @@ class DataGenerator:
 
         var_type = current_variable.type or ""
 
-        rag_content = current_variable.rag_content or ""
+        rag_content = ""
 
+        if current_variable.source_localfile:
+            rag_content = rag_content + current_variable.load_local_file()
+        elif current_variable.source_localdirectory:
+            rag_content = rag_content + current_variable.load_local_directory()
+        elif current_variable.source_internet:
+            rag_content = rag_content + current_variable.load_internet_source()
         if rag_content != "":
             rag_content = "Here are some examples that might help you:\n\n" + rag_content
 
@@ -178,10 +184,18 @@ class DataGenerator:
 
         comp_type = current_variable.type or ""
 
-        rag_content = current_variable.rag_content or ""
+        rag_content = ""
 
-        if rag_content != "":
-            rag_content = "Here are some examples that might help you:\n\n" + rag_content
+        if current_variable.source_localfile:
+            current_variable.load_local_file()
+        elif current_variable.source_localdirectory:
+            current_variable.load_local_directory()
+        elif current_variable.source_internet:
+            current_variable.load_internet_source()
+
+        if current_variable.rag_content:
+            rag_content = f"Here are some examples that might help you:\n\n{current_variable.rag_content}"
+
 
         type_constraint = ""
         
@@ -213,6 +227,7 @@ class DataGenerator:
                                                                             start_with=start_with,
                                                                             last_values=last_values,
                                                                             type_message=type_message,
+                                                                            rag_content=rag_content,
                                                                             note=note)
 
             if isinstance(completion_model, OpenAIInstructModel):
@@ -454,7 +469,9 @@ class DataGenerator:
                     completion_parameters = self.contextual_completion_generation(prompt_text=prompt_text, completion=completion, variables=completion_variables, current_variation_dict={}, fixed_variables=self.template.completion_variables)
                     
                     for completion_param in completion_parameters:
-                        
+
+                        print(completion_param)
+
                         completion_error_message = self.get_completion_error_message(params=completion_param)
                         prompt_error_message = self.get_prompt_error_message(params=prompt_param)
 
@@ -467,7 +484,6 @@ class DataGenerator:
                             row.update(completion_param)
                             result.append(row)
                             
-                            # Save the partial result as CSV
                             write_to_csv(result, output_path)
 
         return result 
