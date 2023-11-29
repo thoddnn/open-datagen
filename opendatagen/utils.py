@@ -209,3 +209,9 @@ def function_to_call(function_name, from_notebook, *args):
     user_function = load_user_function(function_name, from_notebook)
 
     return user_function(*args)
+
+def is_retryable_answer(result):
+    if "i can't fulfill that request" in result.lower(): 
+        return True
+    else:
+        return False 

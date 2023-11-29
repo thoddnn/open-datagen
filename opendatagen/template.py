@@ -150,7 +150,7 @@ class Validator(BaseModel):
 class Variable(BaseModel):
 
     name: str
-    model_name: Optional[str] = "gpt-4-1106-preview"
+    model_name: Optional[str] = "gpt-3.5-turbo-1106"
     temperature: float
     max_tokens: int
     generation_number: int
@@ -168,6 +168,7 @@ class Variable(BaseModel):
     rag_content: Optional[str] = None
     validator:Optional[Validator] = None 
     value:Optional[List[str]] = None 
+    error_message:Optional[str] = None 
 
     class Config:
         extra = "forbid"  # This will raise an error for extra fields

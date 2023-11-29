@@ -77,7 +77,7 @@ class DataGenerator:
 
         variations = []
 
-        variation_model = OpenAIChatModel(model_name=ModelName.GPT_4_TURBO_CHAT.value)
+        variation_model = OpenAIChatModel(model_name=model_name)
         
         for _ in range(generation_number):  
 
@@ -102,6 +102,8 @@ class DataGenerator:
                 while True:
 
                     if count > current_variable.validator.retry_number:
+                        current_variable.error_message = new_message
+                        new_message = None 
                         break 
 
                     generated_value = variation_model.ask(max_tokens=max_tokens, 
@@ -142,7 +144,6 @@ class DataGenerator:
                 
 
                 current_variable.value = generated_value
-
 
             last_values_list.append(generated_value)
             
@@ -223,6 +224,8 @@ class DataGenerator:
                         {"role": "user", "content": temp_variation_prompt},
                 ]
 
+                current_variable.error_message = None 
+
                 if current_variable.validator:
 
                     count = 1
@@ -230,6 +233,7 @@ class DataGenerator:
                     while True:
 
                         if count > current_variable.validator.retry_number:
+                            current_variable.error_message = new_message 
                             break 
 
                         generated_value = completion_model.ask(max_tokens=max_tokens, 
@@ -252,6 +256,7 @@ class DataGenerator:
                         isValid, new_message = function_to_call(function_name, from_notebook, param_dict)
 
                         if isValid:
+                            current_variable.error_message = None 
                             current_variable.value = generated_value
                             break 
                         else:
@@ -269,8 +274,9 @@ class DataGenerator:
                                                             json_mode=current_variable.json_mode,
                                                             seed=current_variable.seed)
                     
-
+                    current_variable.error_message = None 
                     current_variable.value = generated_value
+
 
             last_values_list.append(generated_value)
 
@@ -379,7 +385,7 @@ class DataGenerator:
                         {"role": "user", "content": evol_instruct_prompt},
                 ]
         
-        evol_instruct_model = OpenAIChatModel(model_name=ModelName.GPT_4_TURBO_CHAT.value)
+        evol_instruct_model = OpenAIChatModel(model_name=ModelName.GPT_35_TURBO_CHAT.value)
 
         diversified_prompt_list = evol_instruct_model.ask(max_tokens=512,
                                                             temperature=1,
@@ -390,6 +396,30 @@ class DataGenerator:
 
         return evol_instruct_generated_prompt_list
     
+
+    def get_completion_error_message(self, params:dict):
+        
+        error_str = ""
+
+        for param in params:
+            error_message = self.template.completion_variables[param].error_message
+
+            if error_message:
+                error_str = f"{error_str}\n{error_message}"
+            
+        return error_str
+          
+    def get_prompt_error_message(self, params:dict):
+        
+        error_str = ""
+
+        for param in params:
+            error_message = self.template.prompt_variables[param].error_message
+
+            if error_message:
+                error_str = f"{error_str}\n{error_message}"
+            
+        return error_str
 
     def generate_data(self, output_path):
             
@@ -423,16 +453,16 @@ class DataGenerator:
                     
                     completion_parameters = self.contextual_completion_generation(prompt_text=prompt_text, completion=completion, variables=completion_variables, current_variation_dict={}, fixed_variables=self.template.completion_variables)
                     
-                    print(completion_parameters)
-
                     for completion_param in completion_parameters:
+                        
+                        completion_error_message = self.get_completion_error_message(params=completion_param)
+                        prompt_error_message = self.get_prompt_error_message(params=prompt_param)
 
                         completion_result = completion.format(**completion_param)
 
                         if save_as_csv:
                             
-                            # Append the generated data to the result list
-                            row = {"prompt": initial_prompt, "evol_prompt": prompt_text, "completion": completion_result}
+                            row = {"prompt": initial_prompt, "evol_prompt": prompt_text, "completion": completion_result, "prompt_error": prompt_error_message, "completion_error":completion_error_message}
                             row.update(prompt_param)
                             row.update(completion_param)
                             result.append(row)
@@ -441,3 +471,4 @@ class DataGenerator:
                             write_to_csv(result, output_path)
 
         return result 
+

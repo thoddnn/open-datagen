@@ -1,14 +1,13 @@
 from enum import Enum
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_result
 from openai import OpenAI
 import numpy as np
 import os 
 import json 
+from utils import is_retryable_answer
 
-from utils import extract_content_from_internet
 
-
-N_RETRIES = 3
+N_RETRIES = 2
 
 class ModelName(Enum):
     GPT_35_TURBO_INSTRUCT = "gpt-3.5-turbo-instruct"
@@ -29,7 +28,7 @@ class OpenAIChatModel():
         self.client.api_key = os.getenv("OPENAI_API_KEY")
         self.model_name = model_name
 
-    #@retry(stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
+    @retry(retry=retry_if_result(is_retryable_answer), stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
     def ask(self, max_tokens:int, temperature:int, messages:list, json_mode=False, seed:int =None, use_tools:bool=False) -> str: 
         
         param = {

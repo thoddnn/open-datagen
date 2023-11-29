@@ -1,6 +1,7 @@
 __pycache__/
 *.pyc
 *.csv
+*.txt
 template.json
 *.ipynb
 *.jsonl
