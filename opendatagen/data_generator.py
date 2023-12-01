@@ -40,7 +40,19 @@ class DataGenerator:
         return anonymized_text
 
     def generate_prompt_variable(self, variable_name:str, prompt_text:str, current_variable:Variable):
-            
+        
+        generation_number = current_variable.generation_number 
+
+        variations = []
+
+        if current_variable.get_value_from_huggingface:
+
+            for _ in range(generation_number):
+
+                variations.append(current_variable.get_value_from_huggingface.get_random_value_from_dataset(max_token=current_variable.max_tokens))
+
+            return variations 
+
         initial_variation_prompt = load_file(path="files/generation.txt")
 
         temp_variation_prompt = initial_variation_prompt
@@ -51,8 +63,7 @@ class DataGenerator:
         model_name = current_variable.model_name
         temperature = current_variable.temperature
         max_tokens = current_variable.max_tokens
-        generation_number = current_variable.generation_number 
-
+        
         note = ""
 
         if current_variable.note:
@@ -70,6 +81,8 @@ class DataGenerator:
             rag_content = rag_content + current_variable.load_local_directory()
         elif current_variable.source_internet:
             rag_content = rag_content + current_variable.load_internet_source()
+
+        
         if rag_content != "":
             rag_content = "Here are some examples that might help you:\n\n" + rag_content
 
@@ -80,8 +93,6 @@ class DataGenerator:
 
         last_values_list = []
         last_values = ""
-
-        variations = []
 
         variation_model = OpenAIChatModel(model_name=model_name)
         
@@ -165,6 +176,21 @@ class DataGenerator:
 
     def generate_completion_variable(self, variable_name:str, prompt_text:str, completion_text:str, current_variable:Variable):
         
+        generation_number = current_variable.generation_number 
+
+        variations = []
+
+        if current_variable.get_value_from_huggingface:
+
+            for _ in range(generation_number):
+                
+                generated_value = current_variable.get_value_from_huggingface.get_random_value_from_dataset(max_token=current_variable.max_tokens) 
+                variations.append(generated_value)
+
+            current_variable.value = generated_value
+
+            return variations
+    
         initial_variation_prompt = load_file(path="files/completion.txt")
 
         temp_variation_prompt = initial_variation_prompt
@@ -173,7 +199,6 @@ class DataGenerator:
         model_name = current_variable.model_name
         temperature = current_variable.temperature
         max_tokens = current_variable.max_tokens
-        generation_number = current_variable.generation_number 
         
         note = "" 
 
@@ -213,8 +238,6 @@ class DataGenerator:
 
         last_values_list = []
         last_values = ""
-
-        variations = []
 
         completion_model = OpenAIChatModel(model_name=model_name)
 
@@ -453,7 +476,7 @@ class DataGenerator:
         if len(prompt_variables) > 0:
             # Start the recursive generation process with an empty dictionary for current variations
             prompts_parameters = self.contextual_prompt_generation(prompt=prompt, variables=prompt_variables, current_variation_dict={}, fixed_variables=self.template.prompt_variables)
- 
+
             for prompt_param in prompts_parameters:
 
                 initial_prompt = prompt.format(**prompt_param)
@@ -471,7 +494,7 @@ class DataGenerator:
                     for completion_param in completion_parameters:
 
                         print(completion_param)
-
+                        
                         completion_error_message = self.get_completion_error_message(params=completion_param)
                         prompt_error_message = self.get_prompt_error_message(params=prompt_param)
 
@@ -483,8 +506,34 @@ class DataGenerator:
                             row.update(prompt_param)
                             row.update(completion_param)
                             result.append(row)
-                            
+
                             write_to_csv(result, output_path)
+
+        else:
+
+            prompt_list = [prompt]
+
+            #No variables in the prompt 
+            for prompt_text in prompt_list[:max(self.template.prompt_variation_number,1)]:
+                
+                completion_parameters = self.contextual_completion_generation(prompt_text=prompt_text, completion=completion, variables=completion_variables, current_variation_dict={}, fixed_variables=self.template.completion_variables)
+                
+                for completion_param in completion_parameters:
+
+                    print(completion_param)
+                    
+                    completion_error_message = self.get_completion_error_message(params=completion_param)
+
+                    completion_result = completion.format(**completion_param)
+
+                    if save_as_csv:
+                        
+                        row = {"prompt": prompt, "evol_prompt": prompt_text, "completion": completion_result, "prompt_error": "", "completion_error":completion_error_message}
+                        row.update(completion_param)
+                        result.append(row)
+
+                        write_to_csv(result, output_path)
+
 
         return result 
 

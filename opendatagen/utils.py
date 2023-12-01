@@ -6,8 +6,9 @@ import requests
 from urllib.parse import quote_plus
 import json 
 import importlib
-
-
+import tiktoken
+from datasets import Dataset
+import random 
 
 def dict_to_string(d):
     result = []
@@ -215,3 +216,31 @@ def is_retryable_answer(result):
         return True
     else:
         return False 
+
+
+def num_tokens_from_string(string: str, encoding_name: str) -> int:
+    """Returns the number of tokens in a text string."""
+    encoding = tiktoken.get_encoding(encoding_name)
+    num_tokens = len(encoding.encode(string))
+    return num_tokens
+
+def get_first_n_tokens(text: str, encoding_name: str, n: int, cut_last_sentence: bool = False) -> str:
+    """Returns the first n tokens of a string, with an option to cut the last sentence."""
+    # Encode the string into tokens
+    encoding = tiktoken.get_encoding(encoding_name)
+    tokens = encoding.encode(text)
+
+    # Retrieve the first n tokens
+    tokens = tokens[:n]
+
+    # Cut the last sentence if required
+    if cut_last_sentence:
+        for i in range(len(tokens) - 1, -1, -1):
+            # Assuming '.' represents the end of a sentence
+            if encoding.decode([tokens[i]]) == '.':
+                tokens = tokens[:i+1]
+                break
+
+    # Decode the tokens back to string
+    return encoding.decode(tokens)
+

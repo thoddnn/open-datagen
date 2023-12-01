@@ -25,6 +25,7 @@ setup(
         'spacy>=3',
         'tiktoken>=0.5',
         'PyPDF2>=3',
-        'pandas>=2'
+        'pandas>=2',
+        'datasets>=2'
     ],
 )

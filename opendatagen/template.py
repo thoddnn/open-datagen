@@ -10,6 +10,56 @@ import requests
 import trafilatura
 from PyPDF2 import PdfReader
 import pandas as pd
+from datasets import load_dataset, Dataset
+from utils import get_first_n_tokens, num_tokens_from_string
+import random 
+
+class RAGHuggingFace(BaseModel):
+
+    dataset_name:str
+    dataset_path:str
+    column_name:str
+    
+
+    class Config:
+        extra = "forbid"
+
+    def get_random_value_from_dataset(self, max_token:int=None):
+
+        dst = load_dataset(path=self.dataset_path, name=self.dataset_name) 
+        min_tokens = max_token 
+        max_attempts = 100 
+
+        while True:
+                
+            index = random.randint(0, len(dst["train"]) - 1)
+
+            text = dst["train"][index][self.column_name]
+        
+            num_tokens = num_tokens_from_string(text, encoding_name="cl100k_base")
+
+            if num_tokens >= min_tokens:
+
+                if max_token:
+
+                    text = dst["train"][index][self.column_name]
+
+                    result = get_first_n_tokens(n=max_token, text=text, encoding_name="cl100k_base")
+                    
+                    return result
+                
+                else:
+
+                    result = dst["train"][index][self.column_name]
+                
+                    return result
+
+     
+        
+    """
+    def get_n_nearest_value_from_dataset(self, n:int=1, prompt:str)
+    """
+
 
 class RAGLocalPath(BaseModel):
 
@@ -146,18 +196,21 @@ class Validator(BaseModel):
     from_notebook:bool = False
     retry_number:Optional[int] = 3  
     
+
     
 class Variable(BaseModel):
 
     name: str
     model_name: Optional[str] = "gpt-3.5-turbo-1106"
     temperature: float
-    max_tokens: int
+    max_tokens: int = 256 
     generation_number: int
     system_prompt: Optional[str] = "No verbose."
     source_internet: Optional[RAGInternet] = None
     source_localfile: Optional[RAGLocalPath] = None
     source_localdirectory: Optional[RAGLocalPath] = None
+    source_huggingface:Optional[RAGHuggingFace] = None 
+    get_value_from_huggingface:Optional[RAGHuggingFace] = None 
     type: Optional[str] = None # like 'int' in your example
     min_value: Optional[int] = None # constrain integer to be >= 0
     max_value: Optional[int] = None
@@ -169,6 +222,7 @@ class Variable(BaseModel):
     validator:Optional[Validator] = None 
     value:Optional[List[str]] = None 
     error_message:Optional[str] = None 
+    
 
     class Config:
         extra = "forbid"  # This will raise an error for extra fields
@@ -188,6 +242,15 @@ class Variable(BaseModel):
         if self.source_localfile is not None and self.source_localfile.directoryPath is not None:
             self.rag_content = self.source_localfile.get_content_from_directory()
 
+    def load_huggingface_dataset(self):
+
+        if self.source_huggingface is not None:
+            self.rag_content = self.source_huggingface
+
+    def load_value(self):
+
+        if self.get_value_from_huggingface:
+            self.value = self.get_value_from_huggingface.get_random_value_from_dataset(max_token=self.max_tokens)
 
 class Template(BaseModel):
 
