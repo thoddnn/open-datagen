@@ -13,6 +13,7 @@ import pandas as pd
 from datasets import load_dataset, Dataset
 from utils import get_first_n_tokens, num_tokens_from_string
 import random 
+import uuid
 
 class RAGHuggingFace(BaseModel):
 
@@ -31,7 +32,7 @@ class RAGHuggingFace(BaseModel):
         max_attempts = 100 
 
         while True:
-                
+
             index = random.randint(0, len(dst["train"]) - 1)
 
             text = dst["train"][index][self.column_name]
@@ -197,7 +198,16 @@ class Validator(BaseModel):
     retry_number:Optional[int] = 3  
     
 
-    
+class Variations(BaseModel):
+
+    id:str
+    parent_id:Optional[str] = None 
+    value:str
+    error_message:str = None 
+
+    class Config:
+        extra = "forbid"  # This will raise an error for extra fields
+
 class Variable(BaseModel):
 
     name: str
@@ -220,10 +230,8 @@ class Variable(BaseModel):
     note: Optional[List[str]] = None
     rag_content: Optional[str] = None
     validator:Optional[Validator] = None 
-    value:Optional[List[str]] = None 
-    error_message:Optional[str] = None 
+    values:Optional[Dict[str, Variations]] = {}
     
-
     class Config:
         extra = "forbid"  # This will raise an error for extra fields
 
@@ -251,6 +259,8 @@ class Variable(BaseModel):
 
         if self.get_value_from_huggingface:
             self.value = self.get_value_from_huggingface.get_random_value_from_dataset(max_token=self.max_tokens)
+
+
 
 class Template(BaseModel):
 
