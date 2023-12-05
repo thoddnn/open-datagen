@@ -1,4 +1,4 @@
-from pydantic import BaseModel, validator, ValidationError
+from pydantic import BaseModel, validator, ValidationError, ConfigDict
 from typing import Optional, List, Dict
 from enum import Enum
 import os 
@@ -17,45 +17,67 @@ import uuid
 
 class RAGHuggingFace(BaseModel):
 
-    dataset_name:str
     dataset_path:str
+    dataset_name:Optional[str] = None 
+    data_dir:Optional[str] = None 
     column_name:str
+    streaming:bool = True
+    min_tokens:Optional[int] = 0 
+    max_tokens:Optional[int] = None 
+    subset_size:Optional[int] = 10000
     
-
     class Config:
         extra = "forbid"
 
-    def get_random_value_from_dataset(self, max_token:int=None):
+    def get_random_value_from_dataset(self):
 
-        dst = load_dataset(path=self.dataset_path, name=self.dataset_name) 
-        min_tokens = max_token 
+        param = {}
+
+        if self.dataset_path:
+            param["path"] = self.dataset_path
+        
+        if self.data_dir:
+            param["data_dir"] = self.data_dir
+
+        if self.dataset_name:
+            param["name"] = self.dataset_name
+
+        param["streaming"] = self.streaming
+
+        dst = load_dataset(**param) 
+
+        subset = [sample[self.column_name] for _, sample in zip(range(self.subset_size), dst["train"])]
+        
         max_attempts = 100 
+        count = 0 
 
-        while True:
+        while count < max_attempts:
 
-            index = random.randint(0, len(dst["train"]) - 1)
+            index = random.randint(0, len(subset) - 1)
 
-            text = dst["train"][index][self.column_name]
+            text = subset[index]
         
             num_tokens = num_tokens_from_string(text, encoding_name="cl100k_base")
 
-            if num_tokens >= min_tokens:
+            if num_tokens >= self.min_tokens:
 
-                if max_token:
+                if self.max_tokens:
 
-                    text = dst["train"][index][self.column_name]
+                    text = subset[index]
 
-                    result = get_first_n_tokens(n=max_token, text=text, encoding_name="cl100k_base")
+                    result = get_first_n_tokens(n=self.max_token, text=text, encoding_name="cl100k_base")
                     
                     return result
                 
                 else:
 
-                    result = dst["train"][index][self.column_name]
+                    result = subset[index]
                 
                     return result
+                
+            count = count + 1
 
-     
+
         
     """
     def get_n_nearest_value_from_dataset(self, n:int=1, prompt:str)
@@ -232,9 +254,12 @@ class Variable(BaseModel):
     validator:Optional[Validator] = None 
     values:Optional[Dict[str, Variations]] = {}
     
-    class Config:
-        extra = "forbid"  # This will raise an error for extra fields
 
+    model_config = ConfigDict(
+            protected_namespaces=('protect_me_', 'also_protect_'),
+            extra = "forbid"
+        )
+    
     def load_internet_source(self):
 
         if self.source_internet is not None:
@@ -253,10 +278,10 @@ class Variable(BaseModel):
     def load_huggingface_dataset(self):
 
         if self.source_huggingface is not None:
-            self.rag_content = self.source_huggingface
+            self.rag_content = self.source_huggingface.get_random_value_from_dataset()
 
     def load_value(self):
-
+        
         if self.get_value_from_huggingface:
             self.value = self.get_value_from_huggingface.get_random_value_from_dataset(max_token=self.max_tokens)
 
