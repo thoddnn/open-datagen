@@ -12,7 +12,9 @@
 
 - Data evaluation & cleaning agent
 
-- (SOON) Open-source model support (+ local inference)
+- Open-source model support (HuggingFace Inference API)
+
+- (SOON) Data decontamination
 
 - (SOON) Multimodality
 
