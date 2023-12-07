@@ -51,7 +51,7 @@ class DataGenerator:
 
             for _ in range(generation_number):
                 
-                generated_value = current_variable.get_value_from_huggingface.get_random_value_from_dataset(max_token=current_variable.max_tokens) 
+                generated_value = current_variable.get_value_from_huggingface.get_random_value_from_dataset() 
                 
                 if parent_id:
                     
@@ -101,20 +101,6 @@ class DataGenerator:
 
         comp_type = current_variable.type or ""
 
-        rag_content = ""
-
-        if current_variable.source_localfile:
-            current_variable.load_local_file()
-        elif current_variable.source_localdirectory:
-            current_variable.load_local_directory()
-        elif current_variable.source_internet:
-            current_variable.load_internet_source()
-        elif current_variable.source_huggingface:
-            current_variable.load_huggingface_dataset()
-
-        if current_variable.rag_content:
-            rag_content = f"Here are some examples that might help you:\n\n{current_variable.rag_content}"
-
         type_constraint = ""
         
         if comp_type == "int":
@@ -135,6 +121,20 @@ class DataGenerator:
         variation_model = OpenAIChatModel(model_name=model_name)
         
         for _ in range(generation_number): 
+
+            rag_content = ""
+
+            if current_variable.source_localfile:
+                current_variable.load_local_file()
+            elif current_variable.source_localdirectory:
+                current_variable.load_local_directory()
+            elif current_variable.source_internet:
+                current_variable.load_internet_source()
+            elif current_variable.source_huggingface:
+                current_variable.load_huggingface_dataset()
+
+            if current_variable.rag_content:
+                rag_content = f"Here are some examples that might help you:\n\n{current_variable.rag_content}"
 
             variation_id = str(uuid.uuid4())
 
@@ -326,6 +326,18 @@ class DataGenerator:
         completion_model = OpenAIChatModel(model_name=model_name)
 
         for _ in range(generation_number): 
+
+            if current_variable.source_localfile:
+                current_variable.load_local_file()
+            elif current_variable.source_localdirectory:
+                current_variable.load_local_directory()
+            elif current_variable.source_internet:
+                current_variable.load_internet_source()
+            elif current_variable.source_huggingface:
+                current_variable.load_huggingface_dataset()
+
+            if current_variable.rag_content:
+                rag_content = f"Here are some examples that might help you:\n\n{current_variable.rag_content}"
 
             variation_id = str(uuid.uuid4())
 
@@ -620,7 +632,7 @@ class DataGenerator:
 
                         if save_as_csv:
                             
-                            row = {"prompt": prompt, "evol_prompt": prompt_text, "completion": completion_result}
+                            row = {"prompt": initial_prompt, "evol_prompt": prompt_text, "completion": completion_result}
                             row.update(completion_param)
                             result.append(row)
                             
@@ -655,4 +667,3 @@ class DataGenerator:
 
 
         return result 
-
