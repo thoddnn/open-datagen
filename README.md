@@ -8,7 +8,7 @@
 
 - Quality enhancement with RAG from Internet and local files
 
-- Data anonymization 
+- Data anonymization
 
 - Data evaluation & cleaning agent
 
@@ -42,7 +42,7 @@ Example: Generate a dataset of Python exercises using a template
 
 ```python
 from opendatagen.data_generator import DataGenerator
-from opendatagen.model import LLM
+from opendatagen.model import OpenAIChatModel as LLM
 from opendatagen.template import Template, Variable
 
 # Create the custom template using the Pydantic models
@@ -90,15 +90,15 @@ Once created, you can ask an AI Agent to evaluate and correct your dataset
 from opendatagen.agent import DataAgent
 
 agent = DataAgent()
-    
+
 agent.run()
 ```
 
-## Contribution 
+## Contribution
 
 We welcome contributions to Open Datagen! Whether you're looking to fix bugs, add templates, new features, or improve documentation, your help is greatly appreciated.
-  
-## Note 
+
+## Note
 
 Please note that `opendatagen` is initially powered by OpenAI's models. Be aware of potential biases and use the `note` field to guide outputs.
 
@@ -107,9 +107,9 @@ Please note that `opendatagen` is initially powered by OpenAI's models. Be aware
 We would like to express our gratitude to the following open source projects and individuals that have inspired and helped us:
 
 - **Textbook Generation** by [VikParuchuri](https://github.com/VikParuchuri/textbook_quality)
-  
+
 - **Evol-Instruct Paper** ([Read the paper](https://arxiv.org/abs/2306.08568)) by [WizardLM_AI](https://twitter.com/WizardLM_AI)
 
-## Connect 
+## Connect
 
 Reach us on Twitter: [@thoddnn](https://twitter.com/thoddnn).

@@ -1,14 +1,14 @@
-import os 
-import csv 
+import os
+import csv
 import trafilatura
-import re 
+import re
 import requests
 from urllib.parse import quote_plus
-import json 
+import json
 import importlib
 import tiktoken
 from datasets import Dataset
-import random 
+import random
 
 def dict_to_string(d):
     result = []
@@ -21,10 +21,10 @@ def dict_to_string(d):
 def load_file(path:str):
     # Adjust the path based on this module's location
     absolute_path = os.path.join(os.path.dirname(__file__), path)
-    
+
     with open(absolute_path, 'r') as file:
         content = file.read()
-    
+
     return content
 
 def write_to_csv(rows, path):
@@ -39,12 +39,12 @@ def generate_context_from_json(data, stop_field=None):
         return ""
 
     output = "Given these values\n"
-    
+
     for key, value in data.items():
         if key == stop_field:
             break
         output += f"#{key} value#\n'''{value}\n'''\n"
-    
+
     return output
 
 
@@ -54,7 +54,7 @@ def extract_website_details(url):
 
     title = metadata['title'] if metadata and 'title' in metadata else None
     description = metadata['description'] if metadata and 'description' in metadata else None
-    
+
     content = trafilatura.extract(downloaded)
 
     response = {
@@ -108,13 +108,13 @@ def word_counter(input_string):
 
     # Count the number of words
     number_of_words = len(words)
-    
+
     return number_of_words
 
 def get_google_search_result(keyword:dict, maximum_number_of_link:int = None):
 
     encoded_keyword = quote_plus(keyword)
-    
+
     url = f"https://api.serply.io/v1/search/q={encoded_keyword}"
 
     headers = {
@@ -131,14 +131,14 @@ def get_google_search_result(keyword:dict, maximum_number_of_link:int = None):
 
     result = []
 
-    for element in response_json: 
+    for element in response_json:
 
         link = element['link']
         result.append(link)
 
     if maximum_number_of_link:
         return result[:maximum_number_of_link]
-    
+
     return result
 
 def get_content_from_url(link:str):
@@ -149,26 +149,26 @@ def get_content_from_url(link:str):
     return content
 
 def extract_content_from_internet(keyword:str):
-    
+
     print(f"Browsing for the keyword {keyword}...")
 
     result = ""
-    
+
     urls = get_google_search_result(keyword)
-    
+
     for url in urls:
 
         content = get_content_from_url(url)
-        
+
         if content and word_counter(content) > 500:
-                
+
             print(url)
 
             result = result + "\n" + content
 
     print("Finish browsing...")
-    
-    return result 
+
+    return result
 
 
 def load_user_function(full_function_name:str, from_notebook:bool):
@@ -212,10 +212,10 @@ def function_to_call(function_name, from_notebook, *args):
     return user_function(*args)
 
 def is_retryable_answer(result):
-    if "i can't fulfill that request" in result.lower(): 
+    if "i can't fulfill that request" in result.lower():
         return True
     else:
-        return False 
+        return False
 
 
 def num_tokens_from_string(string: str, encoding_name: str) -> int:
@@ -243,4 +243,3 @@ def get_first_n_tokens(text: str, encoding_name: str, n: int, cut_last_sentence:
 
     # Decode the tokens back to string
     return encoding.decode(tokens)
-
