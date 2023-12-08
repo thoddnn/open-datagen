@@ -10,3 +10,18 @@ main.py
 *.egg-info/
 dist/
 build/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# local testing
+exp_opendatagen.py
+
+# Virtual environment
+venv/
+*.venv
+.venv/
+
+# Environment variables
+.env

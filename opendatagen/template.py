@@ -1,8 +1,8 @@
 from pydantic import BaseModel, validator, ValidationError, ConfigDict
 from typing import Optional, List, Dict
 from enum import Enum
-import os 
-import json 
+import os
+import json
 from opendatagen.utils import load_file
 from opendatagen.model import OpenAIChatModel
 from urllib.parse import quote_plus
@@ -11,21 +11,21 @@ import trafilatura
 from PyPDF2 import PdfReader
 import pandas as pd
 from datasets import load_dataset, Dataset
-from utils import get_first_n_tokens, num_tokens_from_string
-import random 
+from opendatagen.utils import get_first_n_tokens, num_tokens_from_string
+import random
 import uuid
 
 class RAGHuggingFace(BaseModel):
 
     dataset_path:str
-    dataset_name:Optional[str] = None 
-    data_dir:Optional[str] = None 
+    dataset_name:Optional[str] = None
+    data_dir:Optional[str] = None
     column_name:str
     streaming:bool = True
-    min_tokens:Optional[int] = 0 
-    max_tokens:Optional[int] = None 
+    min_tokens:Optional[int] = 0
+    max_tokens:Optional[int] = None
     subset_size:Optional[int] = 10000
-    
+
     class Config:
         extra = "forbid"
 
@@ -35,7 +35,7 @@ class RAGHuggingFace(BaseModel):
 
         if self.dataset_path:
             param["path"] = self.dataset_path
-        
+
         if self.data_dir:
             param["data_dir"] = self.data_dir
 
@@ -44,19 +44,19 @@ class RAGHuggingFace(BaseModel):
 
         param["streaming"] = self.streaming
 
-        dst = load_dataset(**param) 
+        dst = load_dataset(**param)
 
         subset = [sample[self.column_name] for _, sample in zip(range(self.subset_size), dst["train"])]
-        
-        max_attempts = 100 
-        count = 0 
+
+        max_attempts = 100
+        count = 0
 
         while count < max_attempts:
 
             index = random.randint(0, len(subset) - 1)
 
             text = subset[index]
-        
+
             num_tokens = num_tokens_from_string(text, encoding_name="cl100k_base")
 
             if num_tokens >= self.min_tokens:
@@ -66,19 +66,19 @@ class RAGHuggingFace(BaseModel):
                     text = subset[index]
 
                     result = get_first_n_tokens(n=self.max_token, text=text, encoding_name="cl100k_base")
-                    
+
                     return result
-                
+
                 else:
 
                     result = subset[index]
-                
+
                     return result
-                
+
             count = count + 1
 
 
-        
+
     """
     def get_n_nearest_value_from_dataset(self, n:int=1, prompt:str)
     """
@@ -86,9 +86,9 @@ class RAGHuggingFace(BaseModel):
 
 class RAGLocalPath(BaseModel):
 
-    localPath:Optional[str] = None 
-    directoryPath:Optional[str] = None 
-    content:Optional[str] = None 
+    localPath:Optional[str] = None
+    directoryPath:Optional[str] = None
+    content:Optional[str] = None
 
     class Config:
         extra = "forbid"
@@ -136,10 +136,10 @@ class RAGLocalPath(BaseModel):
 
 class RAGInternet(BaseModel):
 
-    keywords:List[str] 
-    return_chunks: Optional[bool] = False 
-    minimum_number_of_words_by_article: Optional[int] = 500 
-    maximum_number_of_words_by_article: Optional[int] = 50000 
+    keywords:List[str]
+    return_chunks: Optional[bool] = False
+    minimum_number_of_words_by_article: Optional[int] = 500
+    maximum_number_of_words_by_article: Optional[int] = 50000
     content: Optional[str] = None
 
     def word_counter(self, input_string):
@@ -148,13 +148,13 @@ class RAGInternet(BaseModel):
 
         # Count the number of words
         number_of_words = len(words)
-        
+
         return number_of_words
 
     def get_google_search_result(self, keyword:dict, maximum_number_of_link:int = None):
 
         encoded_keyword = quote_plus(keyword)
-        
+
         url = f"https://api.serply.io/v1/search/q={encoded_keyword}"
 
         headers = {
@@ -171,14 +171,14 @@ class RAGInternet(BaseModel):
 
         result = []
 
-        for element in response_json: 
+        for element in response_json:
 
             link = element['link']
             result.append(link)
 
         if maximum_number_of_link:
             return result[:maximum_number_of_link]
-        
+
         return result
 
     def get_content_from_url(self, link:str):
@@ -189,21 +189,21 @@ class RAGInternet(BaseModel):
         return content
 
     def extract_content_from_internet(self):
-        
+
         print(f"Browsing...")
 
         for keyword in self.keywords:
 
             result = ""
-            
+
             urls = self.get_google_search_result(keyword)
-            
+
             for url in urls:
 
                 content = self.get_content_from_url(url)
-                
+
                 if content and self.word_counter(content) > self.minimum_number_of_words_by_article and self.word_counter(content) < self.maximum_number_of_words_by_article:
-                        
+
                     print(url)
 
                     result = result + "\n" + content
@@ -215,17 +215,17 @@ class RAGInternet(BaseModel):
 class Validator(BaseModel):
 
     function_name:str
-    additional_parameters:Optional[List[str]] = None 
+    additional_parameters:Optional[List[str]] = None
     from_notebook:bool = False
-    retry_number:Optional[int] = 3  
-    
+    retry_number:Optional[int] = 3
+
 
 class Variations(BaseModel):
 
     id:str
-    parent_id:Optional[str] = None 
+    parent_id:Optional[str] = None
     value:str
-    error_message:str = None 
+    error_message:str = None
 
     class Config:
         extra = "forbid"  # This will raise an error for extra fields
@@ -235,14 +235,14 @@ class Variable(BaseModel):
     name: str
     model_name: Optional[str] = "gpt-3.5-turbo-1106"
     temperature: float
-    max_tokens: int = 256 
+    max_tokens: int = 256
     generation_number: int
     system_prompt: Optional[str] = "No verbose."
     source_internet: Optional[RAGInternet] = None
     source_localfile: Optional[RAGLocalPath] = None
     source_localdirectory: Optional[RAGLocalPath] = None
-    source_huggingface:Optional[RAGHuggingFace] = None 
-    get_value_from_huggingface:Optional[RAGHuggingFace] = None 
+    source_huggingface:Optional[RAGHuggingFace] = None
+    get_value_from_huggingface:Optional[RAGHuggingFace] = None
     type: Optional[str] = None # like 'int' in your example
     min_value: Optional[int] = None # constrain integer to be >= 0
     max_value: Optional[int] = None
@@ -251,20 +251,20 @@ class Variable(BaseModel):
     start_with: Optional[List[str]] = None
     note: Optional[List[str]] = None
     rag_content: Optional[str] = None
-    validator:Optional[Validator] = None 
+    validator:Optional[Validator] = None
     values:Optional[Dict[str, Variations]] = {}
-    
+
 
     model_config = ConfigDict(
             protected_namespaces=('protect_me_', 'also_protect_'),
             extra = "forbid"
         )
-    
+
     def load_internet_source(self):
 
         if self.source_internet is not None:
             self.rag_content = self.source_internet.extract_content_from_internet()
-    
+
     def load_local_file(self):
 
         if self.source_localfile is not None and self.source_localfile.localPath is not None:
@@ -281,7 +281,7 @@ class Variable(BaseModel):
             self.rag_content = self.source_huggingface.get_random_value_from_dataset()
 
     def load_value(self):
-        
+
         if self.get_value_from_huggingface:
             self.value = self.get_value_from_huggingface.get_random_value_from_dataset(max_token=self.max_tokens)
 
@@ -297,8 +297,8 @@ class Template(BaseModel):
     rag_content: Optional[str] = None
     prompt_variables: Optional[Dict[str, Variable]] = None
     completion_variables: Optional[Dict[str, Variable]] = None
-    prompt_variation_number: Optional[int] = 1  
-    value:Optional[List[str]] = None 
+    prompt_variation_number: Optional[int] = 1
+    value:Optional[List[str]] = None
 
     class Config:
         extra = "forbid"  # This will raise an error for extra fields
@@ -309,7 +309,7 @@ class Template(BaseModel):
             self.rag_content = self.source_internet.extract_content_from_internet()
 
     def load_local_file(self):
-        
+
         if self.source_localfile is not None and self.source_localfile.localPath is not None:
             self.rag_content = self.source_localfile.get_content_from_file()
 
@@ -356,7 +356,7 @@ class TemplateManager:
         template = self.templates.get(template_name)
 
         if template:
-            
+
             template.load_internet_source()
             template.load_local_file()
             template.load_local_directory()
@@ -370,9 +370,5 @@ def create_variable_from_name(model:OpenAIChatModel, variable_name:str) -> Varia
     prompt = prompt.format(variable_name=variable_name)
 
     completion = model.ask_instruct_gpt(prompt=prompt, temperature=0, max_tokens=30)
-    
+
     return Variable(**completion)
-
-
-
-

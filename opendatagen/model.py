@@ -2,9 +2,9 @@ from enum import Enum
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_result
 from openai import OpenAI
 import numpy as np
-import os 
-import json 
-from utils import is_retryable_answer
+import os
+import json
+from opendatagen.utils import is_retryable_answer
 import requests
 
 N_RETRIES = 2
@@ -52,21 +52,21 @@ class OpenAIChatModel():
         self.model_name = model_name
 
     @retry(retry=retry_if_result(is_retryable_answer), stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
-    def ask(self, max_tokens:int, temperature:int, messages:list, json_mode=False, seed:int =None, use_tools:bool=False) -> str: 
-        
+    def ask(self, max_tokens:int, temperature:int, messages:list, json_mode=False, seed:int =None, use_tools:bool=False) -> str:
+
         param = {
-            
+
             "model":self.model_name,
             "temperature": temperature,
             "messages": messages,
-            
+
         }
-        
+
         if use_tools:
             param["functions"] = self.tools
         else:
             param["max_tokens"] = max_tokens
-        
+
         if json_mode:
             param["response_format"] = {"type": "json_object"}
 
@@ -78,7 +78,7 @@ class OpenAIChatModel():
 
         answer = completion.choices[0].message.content
 
-        return answer 
+        return answer
 
 class OpenAIInstructModel():
 
@@ -91,21 +91,21 @@ class OpenAIInstructModel():
         self.model_name = model_name.value
 
     @retry(stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
-    def ask(self, max_tokens:int, temperature:int, messages:list, json_mode=False, seed:int=False, use_tools:bool=False) -> str: 
-            
+    def ask(self, max_tokens:int, temperature:int, messages:list, json_mode=False, seed:int=False, use_tools:bool=False) -> str:
+
         param = {
-            
+
             "model":self.model_name,
             "temperature": temperature,
             "messages": messages,
-            
+
         }
-        
+
         if use_tools:
             param["functions"] = self.tools
         else:
             param["max_tokens"] = max_tokens
-        
+
         if json_mode:
             param["response_format"] = {"type": "json_object"}
 
@@ -121,17 +121,16 @@ class OpenAIInstructModel():
 class OpenAIEmbeddingModel():
 
     client = OpenAI()
-    
+
     def __init__(self, model_name: ModelName):
         self.client.api_key = os.getenv("OPENAI_API_KEY")
         self.model_name = model_name.value
 
     def create_embedding(self, prompt:str):
-        
+
         embedding = self.client.embeddings.create(
             model=self.model_name,
             input=prompt
         )
 
         return embedding["data"][0]["embedding"]
-
