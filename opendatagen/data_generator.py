@@ -633,6 +633,7 @@ class DataGenerator:
                         if save_as_csv:
 
                             row = {"prompt": initial_prompt, "evol_prompt": prompt_text, "completion": completion_result}
+                            row.update(prompt_param)
                             row.update(completion_param)
                             result.append(row)
 
@@ -660,6 +661,7 @@ class DataGenerator:
                     if save_as_csv:
 
                         row = {"prompt": prompt, "evol_prompt": prompt_text, "completion": completion_result}
+                        row.update(prompt_param)
                         row.update(completion_param)
                         result.append(row)
 

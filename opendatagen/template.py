@@ -65,8 +65,8 @@ class RAGHuggingFace(BaseModel):
 
                     text = subset[index]
 
-                    result = get_first_n_tokens(n=self.max_token, text=text, encoding_name="cl100k_base")
-
+                    result = get_first_n_tokens(n=self.max_tokens, text=text, encoding_name="cl100k_base")
+                    
                     return result
 
                 else:
