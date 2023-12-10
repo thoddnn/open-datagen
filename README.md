@@ -38,53 +38,59 @@ export SERPLY_API_KEY='your_serply_api_key'
 
 ## Usage
 
-Example: Generate a dataset of Python exercises using a template
+Example: Generate a dataset to improve factuality of an LLM.
 
-```python
-from opendatagen.data_generator import DataGenerator
-from opendatagen.model import OpenAIChatModel as LLM
-from opendatagen.template import Template, Variable
+```json
+"factuality": {
 
-# Create the custom template using the Pydantic models
-user_template = Template(
-    description="Custom template for Python exercises",
-    prompt="Python exercice statement: {python_exercice_statement}",
-    completion="Answer:\n{python_code}",
-    prompt_variation_number=1,
-    prompt_variables={
-        "python_exercice_statement": Variable(
-            name="Python exercice statement",
-            temperature=1,
-            max_tokens=120,
-            generation_number=10,
-            model_name="gpt-3.5-turbo-1106"
-        )
-    },
-    completion_variables={
-        "python_code": Variable(
-            name="Python code",
-            temperature=0,
-            max_tokens=256,
-            generation_number=1,
-            model_name="gpt-4"
-        )
+        "description": "Factuality",
+        "prompt": "Given the following text:\n\n'''{wikipedia_content}'''\n\nAnswer to this factually checkable question:\n'''{question}'''.",
+        "completion": "Answer: '''{answer}'''. Rate the answer out of 10: {score}",
+        "prompt_variation_number":0, 
+        "prompt_variables": {
+            "wikipedia_content": {"name": "Wikipedia content", "generation_number":5, "temperature":1.1, "max_tokens":1024,
+            "model_name":"gpt-3.5-turbo-1106",
+            "get_value_from_huggingface":{"dataset_name":"20220301.en", "dataset_path":"wikipedia", "column_name":"text", "max_tokens":512}
+            },
+            "question": { 
+                "name": "Factually checkable question", "generation_number":3, "temperature":1, "max_tokens":64, 
+                "model_name":"gpt-3.5-turbo-1106"
+            }
+            
+        },
+        "completion_variables": {
+            "answer": {"name": "Short answer to the question", "generation_number":1, "temperature":0, "max_tokens":128,
+            "model_name":"gpt-3.5-turbo-1106"
+            },
+            "score": {"name": "Score", "generation_number":1, "temperature":0, "max_tokens":5, 
+                "model_name":"gpt-3.5-turbo-1106", "note": ["You must answer with an integer. "]
+            }
+            
+        }
     }
-)
 
-#Or you can load your templates from a json file
-#from opendatagen.template import TemplateManager
-#user_template = TemplateManager("files/template.json")
-#Note: you can find examples of json at https://github.com/thoddnn/open-datagen/blob/main/opendatagen/files/template.json
-
-generator = DataGenerator(template=user_template)
-
-data = generator.generate_data(output_path="output.csv")
-
-print(data)
 ```
 
 
-Once created, you can ask an AI Agent to evaluate and correct your dataset
+```python
+from opendatagen.template import TemplateManager
+from opendatagen.data_generator import DataGenerator
+
+output_path = "factuality.csv"
+manager = TemplateManager(template_file_path="template.json")
+template = manager.get_template(template_name=template_name)
+
+if template:
+    
+    generator = DataGenerator(template=template)
+    
+    data = generator.generate_data(output_path=output_path)
+    
+    print(data)
+```
+
+
+Once the CSV created, you can ask an AI Agent to evaluate and correct your dataset
 
 ```python
 from opendatagen.agent import DataAgent
