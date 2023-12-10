@@ -40,6 +40,7 @@ export SERPLY_API_KEY='your_serply_api_key'
 
 Example: Generate a low-biased dataset to improve factuality of an LLM.
 
+template.json:
 ```json
 "factuality": {
 
@@ -71,12 +72,7 @@ Example: Generate a low-biased dataset to improve factuality of an LLM.
 
 ```
 
-Using this JSON you will: 
-1) Get text content from the Wikipedia dataset hosted on HuggingFace
-2) Generate 3 questions about this content
-3) Generate an short answer 
-4) Rate the answer
-
+Python code to generate the dataset:
 ```python
 from opendatagen.template import TemplateManager
 from opendatagen.data_generator import DataGenerator
@@ -94,6 +90,11 @@ if template:
     print(data)
 ```
 
+Using this template you will: 
+1) Get text content from the Wikipedia dataset hosted on HuggingFace
+2) Generate 3 questions about this content
+3) Generate an short answer 
+4) Rate the answer
 
 Once the CSV created, you can ask an AI Agent to evaluate and correct your dataset
 
