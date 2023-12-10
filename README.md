@@ -38,7 +38,7 @@ export SERPLY_API_KEY='your_serply_api_key'
 
 ## Usage
 
-Example: Generate a dataset to improve factuality of an LLM.
+Example: Generate a low-biased dataset to improve factuality of an LLM.
 
 ```json
 "factuality": {
@@ -71,6 +71,11 @@ Example: Generate a dataset to improve factuality of an LLM.
 
 ```
 
+Using this JSON you will: 
+1) Get text content from the Wikipedia dataset hosted on HuggingFace
+2) Generate 3 questions about this content
+3) Generate an short answer 
+4) Rate the answer
 
 ```python
 from opendatagen.template import TemplateManager
