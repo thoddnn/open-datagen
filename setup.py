@@ -11,7 +11,7 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/thoddnn/open-datagen",
-    version='0.0.15',
+    version='0.0.17',
     packages=find_packages(),
     include_package_data=True,  
     install_requires=[
@@ -26,6 +26,7 @@ setup(
         'tiktoken>=0.5',
         'PyPDF2>=3',
         'pandas>=2',
-        'datasets>=2'
+        'datasets>=2',
+        'mistralai'
     ],
 )

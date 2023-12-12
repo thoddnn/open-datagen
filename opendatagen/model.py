@@ -9,6 +9,8 @@ import requests
 from pydantic import BaseModel, validator, ValidationError, ConfigDict
 from typing import Optional, List, Dict, Union, Type
 import random 
+from mistralai.client import MistralClient
+from mistralai.models.chat_completion import ChatMessage
 
 N_RETRIES = 2
 
@@ -25,6 +27,51 @@ class ModelName(Enum):
     LLAMA_7B = "Llama-2-7b-chat-hf"
     LLAMA_13B = "Llama-2-13b-chat-hf"
     LLAMA_70B = "Llama-2-70b-chat-hf"
+
+
+class MistralChatModel(BaseModel):
+
+    name:str = "mistral-tiny"
+    max_tokens:Optional[int] = 256
+    temperature:Optional[float] = 0.7
+    messages:Optional[str] = None 
+    random_seed:Optional[int] = None 
+    top_p:Optional[int] = 1 
+    safe_mode:Optional[bool] = False 
+    client:Optional[Type[MistralClient]] = None 
+
+    def __init__(self, **data):
+
+        super().__init__(**data)
+        api_key = os.environ["MISTRAL_API_KEY"]
+        self.client = MistralClient(api_key=api_key)
+    
+
+    @retry(stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
+    def ask(self, messages) -> str:
+                             
+        param = {
+
+            "model":self.name,
+            "temperature": self.temperature,
+            "messages": messages
+
+        }
+
+        if self.max_tokens:
+            param["max_tokens"] = self.max_tokens
+
+        if self.top_p:
+            param["top_p"] = self.top_p
+
+        if self.random_seed:
+            param["random_seed"] = self.random_seed
+
+        chat_response = self.client.chat(**param)
+
+        answer = chat_response.choices[0].message.content
+
+        return answer
 
 
 class HuggingFaceModel(BaseModel):
@@ -170,9 +217,11 @@ class OpenAIEmbeddingModel(BaseModel):
         return embedding["data"][0]["embedding"]
 
 class Model(BaseModel):
+
     openai_chat_model: Optional[OpenAIChatModel] = None 
     huggingface_model:Optional[HuggingFaceModel] = None 
     openai_instruct_model: Optional[OpenAIInstructModel] = None 
+    mistral_chat_model:Optional[MistralChatModel] = None 
 
     def get_model(self):
         if self.openai_chat_model is not None:
@@ -181,5 +230,7 @@ class Model(BaseModel):
             return self.openai_instruct_model
         elif self.huggingface_model is not None:
             return self.huggingface_model
+        elif self.mistral_chat_model is not None:
+            return self.mistral_chat_model
         else:
             return None

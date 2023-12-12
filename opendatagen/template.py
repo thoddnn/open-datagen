@@ -243,6 +243,7 @@ class Variable(BaseModel):
     source_localdirectory: Optional[RAGLocalPath] = None
     source_huggingface:Optional[RAGHuggingFace] = None
     get_value_from_huggingface:Optional[RAGHuggingFace] = None
+    get_value_from_localfile:Optional[RAGLocalPath] = None
     note: Optional[List[str]] = None
     rag_content: Optional[str] = None
     validator:Optional[Validator] = None
@@ -277,9 +278,6 @@ class Variable(BaseModel):
 
         if self.get_value_from_huggingface:
             self.value = self.get_value_from_huggingface.get_random_value_from_dataset(max_token=self.max_tokens)
-
-
-
 
 
 

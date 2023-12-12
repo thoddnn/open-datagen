@@ -24,16 +24,13 @@
 pip install --upgrade opendatagen
 ```
 
-### Setting up the OpenAI API key (using openai>=1.2)
+### Setting up your API keys
 
 ```bash
-export OPENAI_API_KEY='your_openai_api_key'
-```
-
-### Setting up the SERPLY API key for Google Search API (optional)
-
-```bash
-export SERPLY_API_KEY='your_serply_api_key'
+export OPENAI_API_KEY='your_openai_api_key' #(using openai>=1.2)
+export HUGGINGFACE_API_KEY='your_huggingface_api_key'
+export MISTRAL_API_KEY='your_mistral_api_key'
+export SERPLY_API_KEY='your_serply_api_key' #Google Search API 
 ```
 
 ## Usage

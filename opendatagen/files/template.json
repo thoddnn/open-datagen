@@ -1,17 +1,63 @@
 {
-    "product-review": {
-        "description": "Apple product reviews.",
-        "prompt": "Write a review of '{product_name}'",
-        "prompt_variation_number":3,
-        "source_internet": {"keywords":["List of all Apple products"]},
-        "completion": "{short_review}.\n\nRating: {rating}/10",
-        "prompt_variables": {
-            "product_name": {"name": "Product name", "generation_number":20, "temperature":1, "max_tokens":10, "note": ["It must be real-world Apple products"]}
-        },
-        "completion_variables": {
-            "rating": {"name": "Rating", "generation_number":1, "temperature":1, "max_tokens":8, "type":"int", "min_value":0, "max_value":10},
-            "short_review": {"name": "Short review", "generation_number":1, "temperature":1, "max_tokens":126, "note":["The review must be very bad and severe"], "start_with":["It is bad. ", "It is awful. ", "It very bad. "]}
+    "factuality": {
+        "description": "Factuality",
+        "prompt": "Given the following text:\n\n'''{wikipedia_content}'''\n\nAnswer to this factually checkable question:\n'''{question}'''.",
+        "completion": "Answer: '''{answer}'''. Rate the answer out of 10: {score}",
+        "prompt_variation_number": 0,
+        "variables": {
+            "wikipedia_content": {
+                "name": "Wikipedia content",
+                "generation_number": 1,
+                "get_value_from_huggingface": {
+                    "dataset_name": "20220301.en",
+                    "dataset_path": "wikipedia",
+                    "column_name": "text",
+                    "max_tokens": 512
+                }
+            },
+            "question": {
+                "name": "Factually checkable question",
+                "generation_number": 3,
+                "models": [
+                    {
+                        "openai_chat_model": {
+                            "name": "gpt-3.5-turbo-1106",
+                            "temperature": 0,
+                            "max_tokens": 128
+                        }
+                    }
+                ]
+            }, 
+            "answer": {
+                "name": "Short answer to the question",
+                "generation_number": 1,
+                "models": [
+                    {
+                        "openai_instruct_model": {
+                            "name": "gpt-3.5-turbo-instruct",
+                            "temperature": 0,
+                            "max_tokens": 128,
+                            "start_with": ["Answer:"]
+                        }
+                    }
+                ]
+            
+            },
+            "score": {
+                "name": "Score",
+                "generation_number": 1,
+                "note": ["You must answer with an integer."],
+                "models": [
+                    {
+                        "openai_chat_model": {
+                            "name": "gpt-3.5-turbo-1106",
+                            "temperature": 0,
+                            "max_tokens": 5
+                        }
+                    }
+                ]
+            }
+            
         }
     }
-    
 }

@@ -13,9 +13,11 @@ from opendatagen.utils import dict_to_string, load_file, write_to_csv, generate_
 from opendatagen.utils import snake_case_to_title_case, title_case_to_snake_case
 from opendatagen.utils import extract_content_from_internet
 from opendatagen.anonymizer import Anonymizer
-from opendatagen.model import OpenAIChatModel, OpenAIInstructModel, OpenAIEmbeddingModel, ModelName
+from opendatagen.model import OpenAIChatModel, OpenAIInstructModel, OpenAIEmbeddingModel, ModelName, MistralChatModel
 from opendatagen.template import Template, Variable, Variations, create_variable_from_name
 from opendatagen.utils import function_to_call
+from mistralai.client import MistralClient
+from mistralai.models.chat_completion import ChatMessage
 import uuid
 
 load_dotenv()
@@ -240,13 +242,15 @@ class DataGenerator:
                 start_messages = [
                     {"role": "system", "content": current_model.system_prompt},
                     {"role": "user", "content": temp_variation_prompt},
-            ]
+                ]   
+                
+            elif isinstance(current_model, MistralChatModel):
 
+                start_messages = [ChatMessage(role="user", content=temp_variation_prompt)]
+                
             else:
 
                 raise ValueError("Unknow type of model")
-
-            
 
             if current_variable.validator:
 
@@ -294,7 +298,12 @@ class DataGenerator:
 
                             start_messages.append({"role": "assistant", "content": generated_value})
                             start_messages.append({"role": "user", "content": new_message})
-                            
+
+                        elif isinstance(current_model, MistralChatModel):
+                
+                            start_messages.append(ChatMessage(role="assistant", content=generated_value))
+                            start_messages.append(ChatMessage(role="user", content=new_message))
+                           
                         else:
 
                             raise ValueError("Unknow type of model")
