@@ -30,6 +30,22 @@ class DataGenerator:
 
     def extract_variable_from_string(self, text:str):
         return findall(r'\{(.*?)\}', text)
+    
+    def extract_variable_dict_from_string(self, text:str):
+        
+        list_of_variables = findall(r'\{(.*?)\}', text)
+
+        result = {}
+
+        for variable_id, variable in self.template.variables.items():
+            
+            if variable_id in list_of_variables:
+                result[variable_id] = variable
+
+        return result
+      
+
+
 
     def anonymize_text(self, text_to_anonymize):
 
@@ -39,9 +55,61 @@ class DataGenerator:
         anonymized_text = anonymizer.anonymize(text_to_anonymize)
 
         return anonymized_text
+    
+    def contextual_generation(self, prompt_text:str, variables:list, current_variation_dict:dict, fixed_variables: Dict[str, Variable], completion:str=None, parent_id:str=None):
 
+        # This will be the list to collect all dictionaries
+        result = []
 
-    def generate_prompt_variable(self, prompt_text:str, current_variable:Variable, variable_id_string:str, parent_id:str=None):
+        if not variables:
+            # No more variables to process, generate final variation
+            return [current_variation_dict.copy()]
+        
+        # Get the next variable
+        next_var = variables[0]
+        remaining_variables = variables[1:]
+
+        if completion:
+
+            formatted_template = completion.format(**{var: current_variation_dict.get(var, f'{{{var}}}').value if hasattr(current_variation_dict.get(var, f'{{{var}}}'), 'value') else current_variation_dict.get(var, f'{{{var}}}') for var in re.findall(r'\{(.*?)\}', completion)})
+            current_completion = formatted_template.split(f'{{{next_var}}}')[0] + f'{{{next_var}}}'  
+            current_prompt = prompt_text
+
+        else:
+
+            formatted_template = prompt_text.format(**{var: current_variation_dict.get(var, f'{{{var}}}').value if hasattr(current_variation_dict.get(var, f'{{{var}}}'), 'value') else current_variation_dict.get(var, f'{{{var}}}') for var in re.findall(r'\{(.*?)\}', prompt_text)})
+            current_prompt = formatted_template.split(f'{{{next_var}}}')[0] + f'{{{next_var}}}' 
+            current_completion = None 
+
+        variable = fixed_variables[next_var]
+
+        variations = self.generate_variable(prompt_text=current_prompt,
+                                                       completion_text=current_completion,
+                                                       current_variable=variable,
+                                                       variable_id_string=next_var,
+                                                       parent_id=parent_id)
+
+        for id, variation in variations.items():
+            # Update the current variations dictionary with the new variation
+            updated_variation_dict = current_variation_dict.copy()
+
+            updated_variation_dict[next_var] = variation
+
+            # Recursively process the remaining variables
+            # and extend the all_variation_dicts list with the results
+            result.extend(self.contextual_generation(
+                prompt_text=prompt_text,
+                completion=completion,
+                variables=remaining_variables,
+                current_variation_dict=updated_variation_dict,
+                fixed_variables=fixed_variables,
+                parent_id=id
+            ))
+
+        # Return the list of all variation dictionaries generated
+        return result
+
+    def generate_variable(self, prompt_text:str, current_variable:Variable, variable_id_string:str, completion_text:str=None, parent_id:str=None):
 
         generation_number = current_variable.generation_number
 
@@ -61,11 +129,11 @@ class DataGenerator:
 
                     current_variable.values[new_id] = new_value
 
-                    self.template.prompt_variables[new_id]
+                    self.template.variables[new_id]
 
                     variations[new_id] = new_value
 
-                    self.template.prompt_variables[variable_id_string].values[new_id] = new_value
+                    self.template.variables[variable_id_string].values[new_id] = new_value
 
                 else:
 
@@ -77,219 +145,37 @@ class DataGenerator:
 
                     variations[id_loop] = new_value
 
-                    self.template.prompt_variables[variable_id_string].values[id_loop] = new_value
+                    self.template.variables[variable_id_string].values[id_loop] = new_value
 
             return variations
 
-        initial_variation_prompt = load_file(path="files/generation.txt")
-
-        context = prompt_text
+        if completion_text:
+            initial_variation_prompt = load_file(path="files/completion.txt")
+        else:
+            initial_variation_prompt = load_file(path="files/generation.txt")
 
         temp_variation_prompt = initial_variation_prompt
 
         name = current_variable.name
-        model_name = current_variable.model_name
-        temperature = current_variable.temperature
-        max_tokens = current_variable.max_tokens
 
-        note = ""
+        current_model = random.choice(current_variable.models).get_model()
+
+        model_name = current_model.name
+        temperature = current_model.temperature
+        max_tokens = current_model.max_tokens
 
         if current_variable.note:
             note = random.choice(current_variable.note)
-
-        start_with = current_variable.start_with or ""
-
-        comp_type = current_variable.type or ""
-
-        type_constraint = ""
-
-        if comp_type == "int":
-            type_constraint = "The variations must be integer."
-
-
-        min_value = current_variable.min_value
-        max_value = current_variable.max_value
-        start_options = current_variable.start_with
-
-        type_message = create_type_message(comp_type, min_value, max_value)
-
-        start_with = random.choice(start_options) if start_options and start_options != [""] else ""
-
-        last_values_list = []
-        last_values = ""
-
-        variation_model = OpenAIChatModel(model_name=model_name)
-
-        for _ in range(generation_number):
-
-            rag_content = ""
-
-            if current_variable.source_localfile:
-                current_variable.load_local_file()
-            elif current_variable.source_localdirectory:
-                current_variable.load_local_directory()
-            elif current_variable.source_internet:
-                current_variable.load_internet_source()
-            elif current_variable.source_huggingface:
-                current_variable.load_huggingface_dataset()
-
-            if current_variable.rag_content:
-                rag_content = f"Here are some examples that might help you:\n\n{current_variable.rag_content}"
-
-            variation_id = str(uuid.uuid4())
-
-            temp_variation_prompt = initial_variation_prompt.format(
-                                                        variable_name=variable_id_string,
-                                                        rag_content=rag_content,
-                                                        start_with=start_with,
-                                                        last_values=last_values,
-                                                        type_constraint = type_constraint,
-                                                        note=note,
-                                                        context=context)
-
-            if isinstance(variation_model, OpenAIInstructModel):
-                generated_value = variation_model.ask(prompt=temp_variation_prompt, max_tokens=max_tokens, temperature=temperature)
+        else:
+            note = ""
+        
+        if isinstance(current_model, OpenAIInstructModel): 
+            if current_model.start_with:
+                start_with = random.choice(current_model.start_with)
             else:
-
-                start_messages = [
-                        {"role": "system", "content": "No verbose."},
-                        {"role": "user", "content": temp_variation_prompt},
-                ]
-
-                if current_variable.validator:
-
-                    count = 1
-
-                    while True:
-
-                        if count > current_variable.validator.retry_number:
-
-                            new_value = Variations(id=variation_id, parent_id=parent_id, value=generated_value, error_message=new_message)
-                            current_variable.values[variation_id] = new_value
-                            break
-
-                        generated_value = variation_model.ask(max_tokens=max_tokens,
-                                                            temperature=temperature,
-                                                            messages=start_messages,
-                                                            json_mode=current_variable.json_mode,
-                                                            seed=current_variable.seed)
-
-
-                        self.template.prompt_variables[variable_id_string].values[parent_id] = Variations(id=variation_id, parent_id=parent_id, value=generated_value)
-
-                        function_name = current_variable.validator.function_name
-                        from_notebook = current_variable.validator.from_notebook
-                        additional_parameters = current_variable.validator.additional_parameters
-
-                        param_dict = {}
-
-                        for param in additional_parameters:
-
-                            param_dict[param] = self.template.prompt_variables[param].values[parent_id]
-
-                        #param_dict["generated_value"] = generated_value
-
-                        isValid, new_message = function_to_call(function_name, from_notebook, param_dict)
-
-                        if isValid:
-
-                            new_value = Variations(id=variation_id, parent_id=parent_id, value=generated_value)
-
-                            current_variable.values[variation_id] = new_value
-
-                            break
-
-                        else:
-
-                            start_messages.append({"role": "assistant", "content": generated_value})
-                            start_messages.append({"role": "user", "content": new_message})
-                            count = count + 1
-
-                else:
-
-
-                    generated_value = variation_model.ask(max_tokens=max_tokens,
-                                                            temperature=temperature,
-                                                            messages=start_messages,
-                                                            json_mode=current_variable.json_mode,
-                                                            seed=current_variable.seed)
-
-
-
-                    new_value = Variations(id=variation_id, parent_id=parent_id, value=generated_value)
-                    current_variable.values[variation_id] = new_value
-
-            last_values_list.append(generated_value)
-
-            # Create the desired string format if last_values_list is not empty
-            if last_values_list:
-                last_values = "Generate a content value that is not similar to following values:\n" + "\n".join(last_values_list)
-            else:
-                last_values = ""
-
-
-            variations[variation_id] = new_value
-
-        return variations
-
-
-    def generate_completion_variable(self, prompt_text:str, completion_text:str, current_variable:Variable, variable_id_string:str, parent_id:str=None):
-
-        generation_number = current_variable.generation_number
-
-        variations = {}
-
-        if current_variable.get_value_from_huggingface:
-
-            for _ in range(generation_number):
-
-                generated_value = current_variable.get_value_from_huggingface.get_random_value_from_dataset(max_token=current_variable.max_tokens)
-
-                if parent_id:
-
-                    new_id = str(uuid.uuid4())
-
-                    new_value = Variations(id=new_id, parent_id=parent_id, value=generated_value)
-
-                    current_variable.values[new_id] = new_value
-
-                    self.template.completion_variables[new_id]
-
-                    variations[new_id] = new_value
-
-                    self.template.completion_variables[variable_id_string].values[new_id] = new_value
-
-                else:
-
-                    id_loop = str(uuid.uuid4())
-
-                    new_value = Variations(id=id_loop, parent_id=parent_id, value=generated_value)
-
-                    current_variable.values[id_loop] = new_value
-
-                    variations[id_loop] = new_value
-
-                    self.template.completion_variables[variable_id_string].values[id_loop] = new_value
-
-            return variations
-
-        initial_variation_prompt = load_file(path="files/completion.txt")
-
-        temp_variation_prompt = initial_variation_prompt
-
-        name = current_variable.name
-        model_name = current_variable.model_name
-        temperature = current_variable.temperature
-        max_tokens = current_variable.max_tokens
-
-        note = ""
-
-        if current_variable.note:
-            note = random.choice(current_variable.note)
-
-        start_with = current_variable.start_with or ""
-
-        comp_type = current_variable.type or ""
+                start_with = ""
+        else:
+            start_with = ""
 
         rag_content = ""
 
@@ -305,25 +191,8 @@ class DataGenerator:
         if current_variable.rag_content:
             rag_content = f"Here are some examples that might help you:\n\n{current_variable.rag_content}"
 
-
-        type_constraint = ""
-
-        if comp_type == "int":
-            type_constraint = "The variations must be integer."
-
-
-        min_value = current_variable.min_value
-        max_value = current_variable.max_value
-        start_options = current_variable.start_with
-
-        type_message = create_type_message(comp_type, min_value, max_value)
-
-        start_with = random.choice(start_options) if start_options and start_options != [""] else ""
-
         last_values_list = []
         last_values = ""
-
-        completion_model = OpenAIChatModel(model_name=model_name)
 
         for _ in range(generation_number):
 
@@ -341,88 +210,105 @@ class DataGenerator:
 
             variation_id = str(uuid.uuid4())
 
-            temp_variation_prompt = initial_variation_prompt.format(prompt=prompt_text,
+            if completion_text:
+                
+                temp_variation_prompt = initial_variation_prompt.format(prompt=prompt_text,
                                                                             variable_name=name,
                                                                             completion_type="",
                                                                             completion=completion_text,
                                                                             start_with=start_with,
                                                                             last_values=last_values,
-                                                                            type_message=type_message,
                                                                             rag_content=rag_content,
                                                                             note=note)
-
-            if isinstance(completion_model, OpenAIInstructModel):
-                generated_value = completion_model.ask(prompt=temp_variation_prompt, max_tokens=max_tokens, temperature=temperature)
             else:
+                
+                temp_variation_prompt = initial_variation_prompt.format(
+                                                        variable_name=variable_id_string,
+                                                        rag_content=rag_content,
+                                                        start_with=start_with,
+                                                        last_values=last_values,
+                                                        note=note,
+                                                        context=prompt_text)
+                
+
+            if isinstance(current_model, OpenAIInstructModel):
+
+                start_messages = temp_variation_prompt
+            
+            elif isinstance(current_model, OpenAIChatModel):
 
                 start_messages = [
-                        {"role": "system", "content": current_variable.system_prompt},
-                        {"role": "user", "content": temp_variation_prompt},
-                ]
+                    {"role": "system", "content": current_model.system_prompt},
+                    {"role": "user", "content": temp_variation_prompt},
+            ]
 
-                if current_variable.validator:
+            else:
 
-                    count = 1
+                raise ValueError("Unknow type of model")
 
-                    while True:
+            
 
-                        if count > current_variable.validator.retry_number:
+            if current_variable.validator:
 
-                            new_value = Variations(id=variation_id, parent_id=parent_id, value=generated_value, error_message=new_message)
-                            current_variable.values[variation_id] = new_value
-                            break
+                count = 1
 
-                        generated_value = completion_model.ask(max_tokens=max_tokens,
-                                                            temperature=temperature,
-                                                            messages=start_messages,
-                                                            json_mode=current_variable.json_mode,
-                                                            seed=current_variable.seed)
+                while True:
 
+                    if count > current_variable.validator.retry_number:
 
-                        self.template.completion_variables[variable_id_string].values[parent_id] = Variations(id=variation_id, parent_id=parent_id, value=generated_value)
+                        new_value = Variations(id=variation_id, parent_id=parent_id, value=generated_value, error_message=new_message)
+                        current_variable.values[variation_id] = new_value
+                        break
 
-                        function_name = current_variable.validator.function_name
-                        from_notebook = current_variable.validator.from_notebook
-                        additional_parameters = current_variable.validator.additional_parameters
+                    generated_value = current_model.ask(messages=start_messages)
 
-                        param_dict = {}
+                    self.template.variables[variable_id_string].values[parent_id] = Variations(id=variation_id, parent_id=parent_id, value=generated_value)
+                   
+                    function_name = current_variable.validator.function_name
+                    from_notebook = current_variable.validator.from_notebook
+                    additional_parameters = current_variable.validator.additional_parameters
 
-                        for param in additional_parameters:
+                    param_dict = {}
 
-                            param_dict[param] = self.template.completion_variables[param].values[parent_id]
+                    for param in additional_parameters:
 
-                        #param_dict["generated_value"] = generated_value
+                        param_dict[param] = self.template.variables[param].values[parent_id]
+                        
+                    isValid, new_message = function_to_call(function_name, from_notebook, param_dict)
 
-                        isValid, new_message = function_to_call(function_name, from_notebook, param_dict)
+                    if isValid:
 
-                        if isValid:
+                        new_value = Variations(id=variation_id, parent_id=parent_id, value=generated_value)
 
-                            new_value = Variations(id=variation_id, parent_id=parent_id, value=generated_value)
+                        current_variable.values[variation_id] = new_value
 
-                            current_variable.values[variation_id] = new_value
+                        break
 
-                            break
+                    else:
 
-                        else:
+                        if isinstance(current_model, OpenAIInstructModel):
+
+                            start_messages = f"{start_messages}\n\nAssistant:{generated_value}\n\nUser:{new_message}"
+
+                        elif isinstance(current_model, OpenAIChatModel):
 
                             start_messages.append({"role": "assistant", "content": generated_value})
                             start_messages.append({"role": "user", "content": new_message})
-                            count = count + 1
+                            
+                        else:
 
-                else:
+                            raise ValueError("Unknow type of model")
 
+                        count = count + 1
 
-                    generated_value = completion_model.ask(max_tokens=max_tokens,
-                                                            temperature=temperature,
-                                                            messages=start_messages,
-                                                            json_mode=current_variable.json_mode,
-                                                            seed=current_variable.seed)
+            else:
 
+                generated_value = current_model.ask(messages=start_messages)
+                
+                new_value = Variations(id=variation_id, parent_id=parent_id, value=generated_value)
+                current_variable.values[variation_id] = new_value
 
-
-                    new_value = Variations(id=variation_id, parent_id=parent_id, value=generated_value)
-                    current_variable.values[variation_id] = new_value
-
+            
             last_values_list.append(generated_value)
 
             # Create the desired string format if last_values_list is not empty
@@ -430,111 +316,10 @@ class DataGenerator:
                 last_values = "Generate a content value that is not similar to following values:\n" + "\n".join(last_values_list)
             else:
                 last_values = ""
-
-
+            
             variations[variation_id] = new_value
 
         return variations
-
-
-    def contextual_completion_generation(self, prompt_text:str, completion:str, variables:list, current_variation_dict:dict, fixed_variables: Dict[str, Variable], parent_id:str=None):
-
-        # This will be the list to collect all dictionaries
-        result = []
-
-        if not variables:
-            # No more variables to process, generate final variation
-            return [current_variation_dict.copy()]
-
-        # Get the next variable
-        next_var = variables[0]
-        remaining_variables = variables[1:]
-
-        # Generate variations for the next variable
-        # We create a prompt that includes all the previously generated values
-        formatted_template = completion.format(**{var: current_variation_dict.get(var, f'{{{var}}}').value if hasattr(current_variation_dict.get(var, f'{{{var}}}'), 'value') else current_variation_dict.get(var, f'{{{var}}}') for var in re.findall(r'\{(.*?)\}', completion)})
-        current_completion = formatted_template.split(f'{{{next_var}}}')[0] + f'{{{next_var}}}'  # Keep only the text up to the current variable
-
-        #formatted_template = completion.format(**{var: current_variation_dict.get(var, f'{{{var}}}') for var in re.findall(r'\{(.*?)\}', completion)})
-        #current_completion = formatted_template.split(f'{{{next_var}}}')[0] + f'{{{next_var}}}'  # Keep only the text up to the current variable
-
-        variable = fixed_variables[next_var]
-
-        variations = self.generate_completion_variable(prompt_text=prompt_text,
-                                                       completion_text=current_completion,
-                                                       current_variable=variable,
-                                                       variable_id_string=next_var,
-                                                       parent_id=parent_id)
-
-        for id, variation in variations.items():
-            # Update the current variations dictionary with the new variation
-            updated_variation_dict = current_variation_dict.copy()
-
-            updated_variation_dict[next_var] = variation
-
-            # Recursively process the remaining variables
-            # and extend the all_variation_dicts list with the results
-            result.extend(self.contextual_completion_generation(
-                prompt_text,
-                completion,
-                remaining_variables,
-                updated_variation_dict,
-                fixed_variables=fixed_variables,
-                parent_id=id
-            ))
-
-        # Return the list of all variation dictionaries generated
-        return result
-
-
-    def contextual_prompt_generation(self, prompt:str, variables:list, current_variation_dict:dict, fixed_variables: Dict[str, Variable], parent_id:int = None ):
-
-        # This will be the list to collect all dictionaries
-        result = []
-
-        if not variables:
-            # No more variables to process, generate final variation
-            return [current_variation_dict.copy()]
-
-        # Get the next variable
-        next_var = variables[0]
-        remaining_variables = variables[1:]
-
-        # Generate variations for the next variable
-        # We create a prompt that includes all the previously generated values
-        #formatted_template = prompt.format(**{var: current_variation_dict.get(var, f'{{{var}}}') for var in re.findall(r'\{(.*?)\}', prompt)})
-        #current_prompt = formatted_template.split(f'{{{next_var}}}')[0] + f'{{{next_var}}}'  # Keep only the text up to the current variable
-        formatted_template = prompt.format(**{var: current_variation_dict.get(var, f'{{{var}}}').value if hasattr(current_variation_dict.get(var, f'{{{var}}}'), 'value') else current_variation_dict.get(var, f'{{{var}}}') for var in re.findall(r'\{(.*?)\}', prompt)})
-        current_prompt = formatted_template.split(f'{{{next_var}}}')[0] + f'{{{next_var}}}'  # Keep only the text up to the current variable
-
-        variable = fixed_variables[next_var]
-
-        variations = self.generate_prompt_variable(variable_id_string=next_var,
-                                                   prompt_text=current_prompt,
-                                                   current_variable=variable,
-                                                   parent_id=parent_id)
-
-        # Recursively generate combinations for the rest of the variables
-        for id, variation in variations.items():
-
-            # Update the current variations dictionary with the new variation
-            updated_variation_dict = current_variation_dict.copy()
-
-            updated_variation_dict[next_var] = variation
-
-            # Recursively process the remaining variables
-            # and extend the all_variation_dicts list with the results
-            result.extend(self.contextual_prompt_generation(
-                prompt,
-                remaining_variables,
-                updated_variation_dict,
-                fixed_variables=fixed_variables,
-                parent_id=id
-            ))
-
-        # Return the list of all variation dictionaries generated
-        return result
-
 
     def generate_evol_instruct_prompt(self, initial_prompt:str):
 
@@ -575,7 +360,7 @@ class DataGenerator:
         error_str = ""
 
         for param in params:
-            error_message = self.template.prompt_variables[param].error_message
+            error_message = self.template.variables[param].error_message
 
             if error_message:
                 error_str = f"{error_str}\n{error_message}"
@@ -587,9 +372,11 @@ class DataGenerator:
         # Extracting structures and variables from the template
         prompt = self.template.prompt
         prompt_variables = self.extract_variable_from_string(prompt)
+        prompt_fixed_variables = self.extract_variable_dict_from_string(text=self.template.prompt)
 
         completion = self.template.completion
         completion_variables = self.extract_variable_from_string(completion)
+        completion_fixed_variables = self.extract_variable_dict_from_string(text=self.template.completion)
 
         save_as_csv = True
 
@@ -597,7 +384,7 @@ class DataGenerator:
 
         if len(prompt_variables) > 0:
             # Start the recursive generation process with an empty dictionary for current variations
-            prompts_parameters = self.contextual_prompt_generation(prompt=prompt, variables=prompt_variables, current_variation_dict={}, fixed_variables=self.template.prompt_variables)
+            prompts_parameters = self.contextual_generation(prompt_text=prompt, variables=prompt_variables, current_variation_dict={}, fixed_variables=prompt_fixed_variables)
 
             for p_param in prompts_parameters:
 
@@ -615,15 +402,14 @@ class DataGenerator:
 
                     prompt_list = self.generate_evol_instruct_prompt(initial_prompt=initial_prompt)
 
-                #No variables in the prompt
                 for prompt_text in prompt_list[:max(self.template.prompt_variation_number,1)]:
-
-                    completion_parameters = self.contextual_completion_generation(prompt_text=prompt_text, completion=completion, variables=completion_variables, current_variation_dict={}, fixed_variables=self.template.completion_variables)
-
+              
+                    completion_parameters = self.contextual_generation(prompt_text=prompt_text, completion=completion, variables=completion_variables, current_variation_dict={}, fixed_variables=completion_fixed_variables)
+                    
                     for c_param in completion_parameters:
 
                         completion_param = {}
-                        #completion_error_message = self.get_completion_error_message(params=completion_param)
+
                         for variable_id_string, variation in c_param.items():
                             completion_param[variable_id_string] = variation.value
                             completion_param[f"error_message_{variable_id_string}"] = variation.error_message
@@ -643,15 +429,14 @@ class DataGenerator:
 
             prompt_list = [prompt]
 
-            #No variables in the prompt
             for prompt_text in prompt_list[:max(self.template.prompt_variation_number,1)]:
 
-                completion_parameters = self.contextual_completion_generation(prompt_text=prompt_text, completion=completion, variables=completion_variables, current_variation_dict={}, fixed_variables=self.template.completion_variables)
+                completion_parameters = self.contextual_generation(prompt_text=prompt_text, completion=completion, variables=completion_variables, current_variation_dict={}, fixed_variables=completion_fixed_variables)
 
                 for param in completion_parameters:
 
                     completion_param = {}
-                    #completion_error_message = self.get_completion_error_message(params=completion_param)
+
                     for variable_id_string, variation in param.items():
                         completion_param[variable_id_string] = variation.value
                         completion_param[f"error_message_{variable_id_string}"] = variation.error_message

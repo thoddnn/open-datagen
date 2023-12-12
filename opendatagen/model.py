@@ -6,6 +6,9 @@ import os
 import json
 from opendatagen.utils import is_retryable_answer
 import requests
+from pydantic import BaseModel, validator, ValidationError, ConfigDict
+from typing import Optional, List, Dict, Union, Type
+import random 
 
 N_RETRIES = 2
 
@@ -24,55 +27,73 @@ class ModelName(Enum):
     LLAMA_70B = "Llama-2-70b-chat-hf"
 
 
-class HuggingFaceModel():
+class HuggingFaceModel(BaseModel):
 
-    def __init__(self, api_token:str, model_id:str):
+    model_name:str
+
+    def __init__(self, **data):
+        super().__init__(**data)
 
         self.api_token = os.getenv("HUGGINGFACE_API_KEY")
-        self.model_id = model_id
-
-        pass
-
+        
     def ask(self, prompt:str):
 
         headers = {"Authorization": f"Bearer {self.api_token}"}
-        API_URL = f"https://api-inference.huggingface.co/models/{self.model_id}"
+        API_URL = f"https://api-inference.huggingface.co/models/{self.model_name}"
         response = requests.post(API_URL, headers=headers, json=prompt)
 
         return response.json()
 
-class OpenAIChatModel():
+class OpenAIChatModel(BaseModel):
 
-    tools = []
-
-    client = OpenAI()
-
-    def __init__(self, model_name: str):
+    name:str = "gpt-3.5-turbo-1106"
+    system_prompt:Optional[str] = "No verbose."
+    max_tokens:Optional[int] = 256
+    temperature:Optional[float] = 1
+    json_mode:Optional[bool] = False 
+    seed:Optional[int] = None 
+    tools:Optional[list] = None 
+    top_p:Optional[int] = 1 
+    stop:Optional[str] = None 
+    presence_penalty: Optional[float] = 0
+    frequency_penalty: Optional[float] = 0 
+    client:Optional[Type[OpenAI]] = None 
+    
+    def __init__(self, **data):
+        super().__init__(**data)
+        
+        self.client = OpenAI()
         self.client.api_key = os.getenv("OPENAI_API_KEY")
-        self.model_name = model_name
 
+   
     @retry(retry=retry_if_result(is_retryable_answer), stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
-    def ask(self, max_tokens:int, temperature:int, messages:list, json_mode=False, seed:int =None, use_tools:bool=False) -> str:
-
+    def ask(self, messages) -> str:
+        
         param = {
 
-            "model":self.model_name,
-            "temperature": temperature,
+            "model":self.name,
+            "temperature": self.temperature,
             "messages": messages,
 
         }
 
-        if use_tools:
+        if self.tools:
             param["functions"] = self.tools
-        else:
-            param["max_tokens"] = max_tokens
+        
+        if self.max_tokens:
+            param["max_tokens"] = self.max_tokens
 
-        if json_mode:
+        if self.seed:
+            param["seed"] = self.seed
+        
+        if self.max_tokens:
+            param["max_tokens"] = self.max_tokens
+
+        if self.json_mode:
             param["response_format"] = {"type": "json_object"}
 
-        if seed:
-            param["seed"] = seed
-
+        if self.seed:
+            param["seed"] = self.seed
 
         completion = self.client.chat.completions.create(**param)
 
@@ -80,57 +101,85 @@ class OpenAIChatModel():
 
         return answer
 
-class OpenAIInstructModel():
+class OpenAIInstructModel(BaseModel):
 
-    client = OpenAI()
+    name:str = "gpt-3.5-turbo-instruct"
+    max_tokens:Optional[int] = 256
+    temperature:Optional[float] = 1
+    messages:Optional[str] = None 
+    seed:Optional[int] = None 
+    tools:Optional[List[str]] = None 
+    start_with:Optional[List[str]] = None
+    top_p:Optional[int] = 1 
+    stop:Optional[str] = None 
+    presence_penalty: Optional[float] = 0
+    frequency_penalty: Optional[float] = 0 
+    client:Optional[Type[OpenAI]] = None 
 
-    tools = []
+    def __init__(self, **data):
+        super().__init__(**data)
 
-    def __init__(self, model_name: ModelName):
+        self.client = OpenAI()
         self.client.api_key = os.getenv("OPENAI_API_KEY")
-        self.model_name = model_name.value
 
     @retry(stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
-    def ask(self, max_tokens:int, temperature:int, messages:list, json_mode=False, seed:int=False, use_tools:bool=False) -> str:
-
+    def ask(self, messages:str) -> str:
+        
+        starter = random.choice(self.start_with)
+                               
         param = {
 
-            "model":self.model_name,
-            "temperature": temperature,
-            "messages": messages,
+            "model":self.name,
+            "temperature": self.temperature,
+            "prompt": f"{messages}\n\n{starter}"
 
         }
 
-        if use_tools:
+        if self.tools:
             param["functions"] = self.tools
-        else:
-            param["max_tokens"] = max_tokens
+        
+        if self.max_tokens:
+            param["max_tokens"] = self.max_tokens
 
-        if json_mode:
-            param["response_format"] = {"type": "json_object"}
+        if self.seed:
+            param["seed"] = self.seed
 
-        if seed:
-            param["seed"] = seed
+        completion = self.client.completions.create(**param)
 
-        completion = self.client.chat.completions.create(**param)
-
-        answer = completion.choices[0].message.content
+        answer = completion.choices[0].text 
 
         return answer
 
-class OpenAIEmbeddingModel():
+class OpenAIEmbeddingModel(BaseModel):
 
-    client = OpenAI()
+    name:str
+    
+    def __init__(self, **data):
+        super().__init__(**data)
 
-    def __init__(self, model_name: ModelName):
+        self.client = OpenAI()
         self.client.api_key = os.getenv("OPENAI_API_KEY")
-        self.model_name = model_name.value
 
     def create_embedding(self, prompt:str):
-
+        
         embedding = self.client.embeddings.create(
             model=self.model_name,
             input=prompt
         )
 
         return embedding["data"][0]["embedding"]
+
+class Model(BaseModel):
+    openai_chat_model: Optional[OpenAIChatModel] = None 
+    huggingface_model:Optional[HuggingFaceModel] = None 
+    openai_instruct_model: Optional[OpenAIInstructModel] = None 
+
+    def get_model(self):
+        if self.openai_chat_model is not None:
+            return self.openai_chat_model
+        elif self.openai_instruct_model is not None:
+            return self.openai_instruct_model
+        elif self.huggingface_model is not None:
+            return self.huggingface_model
+        else:
+            return None

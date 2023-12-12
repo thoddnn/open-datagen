@@ -8,7 +8,7 @@ Given prompt:
 Given completion:
 """{completion}"""
 
-Write a {variable_name} value for the given prompt. {type_message}
+Write a {variable_name} value for the given prompt.
 
 Don't use any variable between curly brackets, brackets in your answer.
 

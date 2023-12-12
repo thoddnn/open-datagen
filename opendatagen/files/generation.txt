@@ -3,8 +3,6 @@ Given this prompt: """{context}"""
 
 Write the {variable_name} value. Don't use any variable between curly brackets, brackets in your answer.
 
-{type_constraint}
-
 {note}
 
 {rag_content}

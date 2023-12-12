@@ -1,10 +1,10 @@
 from pydantic import BaseModel, validator, ValidationError, ConfigDict
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Union
 from enum import Enum
 import os
 import json
 from opendatagen.utils import load_file
-from opendatagen.model import OpenAIChatModel
+from opendatagen.model import OpenAIChatModel, OpenAIInstructModel, OpenAIEmbeddingModel, HuggingFaceModel, Model
 from urllib.parse import quote_plus
 import requests
 import trafilatura
@@ -14,6 +14,7 @@ from datasets import load_dataset, Dataset
 from opendatagen.utils import get_first_n_tokens, num_tokens_from_string
 import random
 import uuid
+
 
 class RAGHuggingFace(BaseModel):
 
@@ -229,31 +230,23 @@ class Variations(BaseModel):
 
     class Config:
         extra = "forbid"  # This will raise an error for extra fields
+ 
+
 
 class Variable(BaseModel):
 
     name: str
-    model_name: Optional[str] = "gpt-3.5-turbo-1106"
-    temperature: float
-    max_tokens: int = 256
-    generation_number: int
-    system_prompt: Optional[str] = "No verbose."
+    models:Optional[List[Model]] = None 
+    generation_number: int = 1
     source_internet: Optional[RAGInternet] = None
     source_localfile: Optional[RAGLocalPath] = None
     source_localdirectory: Optional[RAGLocalPath] = None
     source_huggingface:Optional[RAGHuggingFace] = None
     get_value_from_huggingface:Optional[RAGHuggingFace] = None
-    type: Optional[str] = None # like 'int' in your example
-    min_value: Optional[int] = None # constrain integer to be >= 0
-    max_value: Optional[int] = None
-    json_mode: Optional[bool] = False
-    seed:Optional[int] = None
-    start_with: Optional[List[str]] = None
     note: Optional[List[str]] = None
     rag_content: Optional[str] = None
     validator:Optional[Validator] = None
     values:Optional[Dict[str, Variations]] = {}
-
 
     model_config = ConfigDict(
             protected_namespaces=('protect_me_', 'also_protect_'),
@@ -287,17 +280,19 @@ class Variable(BaseModel):
 
 
 
+
+
+
 class Template(BaseModel):
 
     description: str
     prompt: str
     completion: str
+    prompt_variation_number: Optional[int] = 1
+    variables: Optional[Dict[str, Variable]] = None
     source_internet: Optional[RAGInternet] = None
     source_localfile: Optional[RAGLocalPath] = None
     rag_content: Optional[str] = None
-    prompt_variables: Optional[Dict[str, Variable]] = None
-    completion_variables: Optional[Dict[str, Variable]] = None
-    prompt_variation_number: Optional[int] = 1
     value:Optional[List[str]] = None
 
     class Config:
@@ -322,6 +317,7 @@ class TemplateName(Enum):
     PRODUCT_REVIEW = "product-review"
     CHUNK = "chunk"
     CHUNK2 = "chunk2"
+    HALLUCINATION = "hallucination"
 
 
 class TemplateManager:
@@ -340,15 +336,11 @@ class TemplateManager:
 
         templates = {}
         for key, data in raw_data.items():
-            try:
-                template_name = key
-                template = Template(**data)
-                templates[template_name] = template
-            except ValidationError as e:
-                print(f"Error in template {key}: {e}")
-            except ValueError:
-                print(f"Unknown template name {key}")
-
+            
+            template_name = key
+            template = Template(**data)
+            templates[template_name] = template
+            
         return templates
 
     def get_template(self, template_name: str) -> Template:

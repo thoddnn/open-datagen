@@ -42,34 +42,69 @@ Example: Generate a low-biased dataset to improve factuality of an LLM.
 
 template.json:
 ```json
-"factuality": {
-
+{
+    "factuality": {
         "description": "Factuality",
         "prompt": "Given the following text:\n\n'''{wikipedia_content}'''\n\nAnswer to this factually checkable question:\n'''{question}'''.",
         "completion": "Answer: '''{answer}'''. Rate the answer out of 10: {score}",
-        "prompt_variation_number":0, 
-        "prompt_variables": {
-            "wikipedia_content": {"name": "Wikipedia content", "generation_number":5, "temperature":1.1, "max_tokens":1024,
-            "model_name":"gpt-3.5-turbo-1106",
-            "get_value_from_huggingface":{"dataset_name":"20220301.en", "dataset_path":"wikipedia", "column_name":"text", "max_tokens":512}
+        "prompt_variation_number": 0,
+        "variables": {
+            "wikipedia_content": {
+                "name": "Wikipedia content",
+                "generation_number": 1,
+                "get_value_from_huggingface": {
+                    "dataset_name": "20220301.en",
+                    "dataset_path": "wikipedia",
+                    "column_name": "text",
+                    "max_tokens": 512
+                }
             },
-            "question": { 
-                "name": "Factually checkable question", "generation_number":3, "temperature":1, "max_tokens":64, 
-                "model_name":"gpt-3.5-turbo-1106"
-            }
+            "question": {
+                "name": "Factually checkable question",
+                "generation_number": 3,
+                "models": [
+                    {
+                        "openai_chat_model": {
+                            "name": "gpt-3.5-turbo-1106",
+                            "temperature": 0,
+                            "max_tokens": 128
+                        }
+                    }
+                ]
+            }, 
+            "answer": {
+                "name": "Short answer to the question",
+                "generation_number": 1,
+                "models": [
+                    {
+                        "openai_instruct_model": {
+                            "name": "gpt-3.5-turbo-instruct",
+                            "temperature": 0,
+                            "max_tokens": 128,
+                            "start_with": ["Answer:"]
+                        }
+                    }
+                ]
             
-        },
-        "completion_variables": {
-            "answer": {"name": "Short answer to the question", "generation_number":1, "temperature":0, "max_tokens":128,
-            "model_name":"gpt-3.5-turbo-1106"
             },
-            "score": {"name": "Score", "generation_number":1, "temperature":0, "max_tokens":5, 
-                "model_name":"gpt-3.5-turbo-1106", "note": ["You must answer with an integer. "]
+            "score": {
+                "name": "Score",
+                "generation_number": 1,
+                "note": ["You must answer with an integer."],
+                "models": [
+                    {
+                        "openai_chat_model": {
+                            "name": "gpt-3.5-turbo-1106",
+                            "temperature": 0,
+                            "max_tokens": 5
+                        }
+                    }
+                ]
             }
             
         }
     }
-
+}
 ```
 
 Python code to generate the dataset:
