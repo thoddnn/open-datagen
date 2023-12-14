@@ -322,11 +322,15 @@ class TemplateManager:
 
     def __init__(self, template_file_path:str):
         self.template_file_path = self.get_template_file_path(template_file_path)
-        #self.template_file_path = self.get_template_file_path(filename)
         self.templates = self.load_templates()
 
     def get_template_file_path(self, filename: str) -> str:
-        return os.path.join(os.path.dirname(__file__), filename)
+        base_path = os.getcwd()  
+        
+        if os.path.isabs(filename):
+            return filename
+        else:
+            return os.path.join(base_path, filename) 
 
     def load_templates(self) -> Dict[str, Template]:
         with open(self.template_file_path, 'r') as file:

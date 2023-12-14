@@ -7,6 +7,7 @@ template.json
 *.jsonl
 main.py
 *.vscode
+*.in
 *.egg-info/
 dist/
 build/

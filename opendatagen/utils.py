@@ -27,12 +27,24 @@ def load_file(path:str):
 
     return content
 
-def write_to_csv(rows, path):
-    """Write the provided data to a CSV file at the specified path."""
+def write_to_csv(rows, filename):
+
+    if not rows:  # Check if rows is empty or None
+        raise ValueError("The 'rows' argument cannot be empty.")
+    
+    # Use the current working directory instead of the script's directory
+    base_path = os.getcwd()
+
+    if os.path.isabs(filename):
+        path = filename
+    else:
+        path = os.path.join(base_path, filename)
+    
+    # Open the file and write the rows
     with open(path, 'w', newline='') as file:
         writer = csv.DictWriter(file, fieldnames=rows[0].keys())
         writer.writeheader()  # Writing the headers
-        writer.writerows(rows)
+        writer.writerows(rows)  # Writing the rows
 
 def generate_context_from_json(data, stop_field=None):
     if stop_field and list(data.keys())[0] == stop_field:

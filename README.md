@@ -110,6 +110,7 @@ from opendatagen.template import TemplateManager
 from opendatagen.data_generator import DataGenerator
 
 output_path = "factuality.csv"
+template_name = "factuality"
 manager = TemplateManager(template_file_path="template.json")
 template = manager.get_template(template_name=template_name)
 

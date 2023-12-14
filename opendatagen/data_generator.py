@@ -322,7 +322,7 @@ class DataGenerator:
 
             # Create the desired string format if last_values_list is not empty
             if last_values_list:
-                last_values = "Generate a content value that is not similar to following values:\n" + "\n".join(last_values_list)
+                last_values = "You must generate a content value that is not similar to following values:\n'''" + "\n".join(last_values_list) + "\n'''"
             else:
                 last_values = ""
             
