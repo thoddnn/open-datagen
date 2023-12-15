@@ -151,9 +151,11 @@ Please note that `opendatagen` is initially powered by OpenAI's models. Be aware
 
 We would like to express our gratitude to the following open source projects and individuals that have inspired and helped us:
 
-- **Textbook Generation** by [VikParuchuri](https://github.com/VikParuchuri/textbook_quality)
+- **Textbooks are all you need** ([Read the paper](https://arxiv.org/abs/2306.11644)) 
 
 - **Evol-Instruct Paper** ([Read the paper](https://arxiv.org/abs/2306.08568)) by [WizardLM_AI](https://twitter.com/WizardLM_AI)
+
+- **Textbook Generation** by [VikParuchuri](https://github.com/VikParuchuri/textbook_quality)
 
 ## Connect
 
