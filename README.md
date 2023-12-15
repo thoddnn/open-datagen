@@ -157,6 +157,7 @@ We would like to express our gratitude to the following open source projects and
 
 - **Textbook Generation** by [VikParuchuri](https://github.com/VikParuchuri/textbook_quality)
 
+
 ## Connect
 
 Reach us on Twitter: [@thoddnn](https://twitter.com/thoddnn).
