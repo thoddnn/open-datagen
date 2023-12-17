@@ -63,7 +63,7 @@ template.json:
                     {
                         "openai_chat_model": {
                             "name": "gpt-3.5-turbo-1106",
-                            "temperature": 0,
+                            "temperature": [0, 1],
                             "max_tokens": 128
                         }
                     }
@@ -76,7 +76,7 @@ template.json:
                     {
                         "openai_instruct_model": {
                             "name": "gpt-3.5-turbo-instruct",
-                            "temperature": 0,
+                            "temperature": [0, 1],
                             "max_tokens": 128,
                             "start_with": ["Answer:"]
                         }
@@ -92,7 +92,7 @@ template.json:
                     {
                         "openai_chat_model": {
                             "name": "gpt-3.5-turbo-1106",
-                            "temperature": 0,
+                            "temperature": [0, 1],
                             "max_tokens": 5
                         }
                     }
