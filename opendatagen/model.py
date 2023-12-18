@@ -11,6 +11,8 @@ from typing import Optional, List, Dict, Union, Type
 import random 
 from mistralai.client import MistralClient
 from mistralai.models.chat_completion import ChatMessage
+import math 
+import tiktoken
 
 N_RETRIES = 2
 
@@ -33,12 +35,13 @@ class MistralChatModel(BaseModel):
 
     name:str = "mistral-tiny"
     max_tokens:Optional[int] = 256
-    temperature:Optional[float] = 0.7
+    temperature:Optional[List[float]] = [0.7]
     messages:Optional[str] = None 
     random_seed:Optional[int] = None 
     top_p:Optional[int] = 1 
     safe_mode:Optional[bool] = False 
     client:Optional[Type[MistralClient]] = None 
+    confidence_score:Optional[Dict] = {} 
 
     def __init__(self, **data):
 
@@ -46,14 +49,13 @@ class MistralChatModel(BaseModel):
         api_key = os.environ["MISTRAL_API_KEY"]
         self.client = MistralClient(api_key=api_key)
     
-
     @retry(stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
     def ask(self, messages) -> str:
                              
         param = {
 
             "model":self.name,
-            "temperature": self.temperature,
+            "temperature": random.choice(self.temperature),
             "messages": messages
 
         }
@@ -96,7 +98,7 @@ class OpenAIChatModel(BaseModel):
     name:str = "gpt-3.5-turbo-1106"
     system_prompt:Optional[str] = "No verbose."
     max_tokens:Optional[int] = 256
-    temperature:Optional[float] = 1
+    temperature:Optional[List[float]] = [1]
     json_mode:Optional[bool] = False 
     seed:Optional[int] = None 
     tools:Optional[list] = None 
@@ -105,6 +107,8 @@ class OpenAIChatModel(BaseModel):
     presence_penalty: Optional[float] = 0
     frequency_penalty: Optional[float] = 0 
     client:Optional[Type[OpenAI]] = None 
+    logprobs:Optional[bool] = False 
+    confidence_score:Optional[Dict] = {} 
     
     def __init__(self, **data):
         super().__init__(**data)
@@ -119,8 +123,9 @@ class OpenAIChatModel(BaseModel):
         param = {
 
             "model":self.name,
-            "temperature": self.temperature,
+            "temperature": random.choice(self.temperature),
             "messages": messages,
+            "logprobs": self.logprobs
 
         }
 
@@ -144,15 +149,19 @@ class OpenAIChatModel(BaseModel):
 
         completion = self.client.chat.completions.create(**param)
 
-        answer = completion.choices[0].message.content
+        if self.logprobs:
+            self.confidence_score = get_confidence_score(completion=completion)
 
+        answer = completion.choices[0].message.content
+        
         return answer
+
 
 class OpenAIInstructModel(BaseModel):
 
     name:str = "gpt-3.5-turbo-instruct"
     max_tokens:Optional[int] = 256
-    temperature:Optional[float] = 1
+    temperature:Optional[List[float]] = [1]
     messages:Optional[str] = None 
     seed:Optional[int] = None 
     tools:Optional[List[str]] = None 
@@ -162,6 +171,8 @@ class OpenAIInstructModel(BaseModel):
     presence_penalty: Optional[float] = 0
     frequency_penalty: Optional[float] = 0 
     client:Optional[Type[OpenAI]] = None 
+    confidence_score:Optional[Dict] = {} 
+
 
     def __init__(self, **data):
         super().__init__(**data)
@@ -169,16 +180,22 @@ class OpenAIInstructModel(BaseModel):
         self.client = OpenAI()
         self.client.api_key = os.getenv("OPENAI_API_KEY")
 
+    
+        
     @retry(stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
     def ask(self, messages:str) -> str:
-        
-        starter = random.choice(self.start_with)
-                               
+
+        if self.start_with:
+            starter = random.choice(self.start_with)
+        else:
+            starter = ""
+
         param = {
 
             "model":self.name,
-            "temperature": self.temperature,
-            "prompt": f"{messages}\n\n{starter}"
+            "temperature": random.choice(self.temperature),
+            "prompt": f"{messages}\n\n{starter}",
+            "logprobs": self.logprobs
 
         }
 
@@ -234,3 +251,74 @@ class Model(BaseModel):
             return self.mistral_chat_model
         else:
             return None
+        
+
+
+def convert_openailogprobs_to_dict(completion):
+
+    result = {}
+
+    for logp in completion.choices[0].logprobs.content:
+        
+        result[logp.token] = math.exp(logp.logprob)
+
+    return result 
+
+
+def extract_keyword_from_text(text:str):
+
+    schema = {
+        "type": "object",
+        "properties": {
+            "keywords": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+            }
+        },
+        "required": ["keywords"]
+    }
+
+    system_prompt = f"Identify and extract all the important keyphrases from the given text return a valid JSON complying with this schema:\n{str(schema)}"
+
+    user_prompt = f"Text:\n'''{text}'''"
+
+    messages = [
+        {"role":"system", "content":system_prompt},
+        {"role":"user", "content":user_prompt}
+    ]
+
+    model = OpenAIChatModel(system_prompt=system_prompt, user_prompt=user_prompt, temperature=[0], json_mode=True) 
+
+    answer = model.ask(messages)
+
+    return answer 
+
+def get_confidence_score(completion):
+
+    confidence_score = {}
+    
+    logp_dict = convert_openailogprobs_to_dict(completion=completion)
+
+    keywords = json.loads(extract_keyword_from_text(text=completion.choices[0].message.content))["keywords"]
+   
+    for keyword in keywords:
+
+        encoding = tiktoken.get_encoding("cl100k_base")
+
+        list_of_tokens_integers = encoding.encode(keyword)
+
+        tokens = [encoding.decode_single_token_bytes(token).decode('utf-8') for token in list_of_tokens_integers]
+        # Initialize the minimum probability as 1 (maximum possible probability)
+        min_probability = 1
+        
+        for token in tokens:
+            # Check if token is in the dictionary and update the minimum probability
+            if token in logp_dict and logp_dict[token] < min_probability:
+                min_probability = logp_dict[token]
+
+        # Store the minimum probability as the confidence level for the keyword
+        confidence_score[keyword] = min_probability
+
+    return confidence_score

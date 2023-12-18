@@ -9,6 +9,8 @@ import importlib
 import tiktoken
 from datasets import Dataset
 import random
+import math 
+import openai
 
 def dict_to_string(d):
     result = []
@@ -255,3 +257,4 @@ def get_first_n_tokens(text: str, encoding_name: str, n: int, cut_last_sentence:
 
     # Decode the tokens back to string
     return encoding.decode(tokens)
+

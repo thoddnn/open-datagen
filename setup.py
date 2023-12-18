@@ -11,7 +11,7 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/thoddnn/open-datagen",
-    version='0.0.20',
+    version='0.0.21',
     packages=find_packages(),
     include_package_data=True,  
     install_requires=[
