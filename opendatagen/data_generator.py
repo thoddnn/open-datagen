@@ -141,7 +141,7 @@ class DataGenerator:
 
                     id_loop = str(uuid.uuid4())
 
-                    new_value = Variations(id=id_loop, parent_id=parent_id, value=generated_value)
+                    new_value = Variations(id=id_loop, parent_id=id_loop, value=generated_value)
 
                     current_variable.values[id_loop] = new_value
 
@@ -261,7 +261,11 @@ class DataGenerator:
                         break
                     
                     generated_value = current_model.ask(messages=start_messages)
-                    current_confidence_score = current_model.confidence_scores
+
+                    if isinstance(current_model, OpenAIChatModel):
+                        current_confidence_score = current_model.confidence_scores
+                    else: 
+                        current_confidence_score = {} 
 
                     self.template.variables[variable_id_string].values[parent_id] = Variations(id=variation_id, parent_id=parent_id, value=generated_value, confidence_score=current_confidence_score)
                    
@@ -397,6 +401,8 @@ class DataGenerator:
                 prompt_param = {}
 
                 for variable_id_string, prompt_variation in p_param.items():
+                    if prompt_variation.id:
+                        parent_id = prompt_variation.parent_id
                     prompt_param[variable_id_string] = prompt_variation.value
                     prompt_param[f"error_message_{variable_id_string}"] = prompt_variation.error_message
                     prompt_param[f"confidence_{variable_id_string}"] = str(prompt_variation.confidence_score)
@@ -411,7 +417,12 @@ class DataGenerator:
 
                 for prompt_text in prompt_list[:max(self.template.prompt_variation_number,1)]:
               
-                    completion_parameters = self.contextual_generation(prompt_text=prompt_text, completion=completion, variables=completion_variables, current_variation_dict={}, fixed_variables=completion_fixed_variables)
+                    completion_parameters = self.contextual_generation(prompt_text=prompt_text, 
+                                                                       completion=completion, 
+                                                                       variables=completion_variables,
+                                                                       current_variation_dict={}, 
+                                                                       fixed_variables=completion_fixed_variables,
+                                                                       parent_id=parent_id)
                     
                     for c_param in completion_parameters:
 

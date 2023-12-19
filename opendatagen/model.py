@@ -44,7 +44,7 @@ class MistralChatModel(BaseModel):
     confidence_score:Optional[Dict] = {} 
 
     def __init__(self, **data):
-
+        
         super().__init__(**data)
         api_key = os.environ["MISTRAL_API_KEY"]
         self.client = MistralClient(api_key=api_key)
@@ -194,8 +194,7 @@ class OpenAIInstructModel(BaseModel):
 
             "model":self.name,
             "temperature": random.choice(self.temperature),
-            "prompt": f"{messages}\n\n{starter}",
-            "logprobs": self.logprobs
+            "prompt": f"{messages}\n\n{starter}"
 
         }
 
