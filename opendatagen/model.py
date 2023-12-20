@@ -301,23 +301,29 @@ def get_confidence_score(completion):
     logp_dict = convert_openailogprobs_to_dict(completion=completion)
 
     keywords = json.loads(extract_keyword_from_text(text=completion.choices[0].message.content))["keywords"]
-   
+
     for keyword in keywords:
 
-        encoding = tiktoken.get_encoding("cl100k_base")
+        try:
 
-        list_of_tokens_integers = encoding.encode(keyword)
+            encoding = tiktoken.get_encoding("cl100k_base")
 
-        tokens = [encoding.decode_single_token_bytes(token).decode('utf-8') for token in list_of_tokens_integers]
-        # Initialize the minimum probability as 1 (maximum possible probability)
-        min_probability = 1
+            list_of_tokens_integers = encoding.encode(keyword)
+
+            tokens = [encoding.decode_single_token_bytes(token).decode('utf-8') for token in list_of_tokens_integers]
+            # Initialize the minimum probability as 1 (maximum possible probability)
+            min_probability = 1
+            
+            for token in tokens:
+                # Check if token is in the dictionary and update the minimum probability
+                if token in logp_dict and logp_dict[token] < min_probability:
+                    min_probability = logp_dict[token]
+
+            # Store the minimum probability as the confidence level for the keyword
+            confidence_score[keyword] = min_probability
         
-        for token in tokens:
-            # Check if token is in the dictionary and update the minimum probability
-            if token in logp_dict and logp_dict[token] < min_probability:
-                min_probability = logp_dict[token]
-
-        # Store the minimum probability as the confidence level for the keyword
-        confidence_score[keyword] = min_probability
+        except UnicodeDecodeError as e:
+            
+            print(f"Error decoding token {token}: {e}")
 
     return confidence_score

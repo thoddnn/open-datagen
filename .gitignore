@@ -1,9 +1,7 @@
 __pycache__/
 *.pyc
-*.csv
 *.txt
 template.json
-*.ipynb
 *.jsonl
 main.py
 *.vscode
@@ -26,3 +24,12 @@ venv/
 
 # Environment variables
 .env
+
+# General rules to exclude
+*.csv
+*.ipynb
+
+# Exception for your folder
+!examples/never-seen-eval/factuality/*.csv
+!examples/never-seen-eval/factuality/*.ipynb
+!examples/never-seen-eval/factuality/*.json
