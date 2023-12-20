@@ -1,6 +1,6 @@
 # ⬜️ Open Datagen ⬜️
 
-**Open Datagen**, a steerable data generation system for ML models training.
+**Open Datagen**, a data preparation system to build controllable AI system
 
 ## Features
 
