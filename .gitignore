@@ -25,11 +25,11 @@ venv/
 # Environment variables
 .env
 
-# General rules to exclude
+# Exclude all CSV, IPYNB, and JSON files
 *.csv
 *.ipynb
+*.json
 
-# Exception for your folder
-!examples/never-seen-eval/factuality/*.csv
-!examples/never-seen-eval/factuality/*.ipynb
-!examples/never-seen-eval/factuality/*.json
+!/opendatagen/examples/never-seen-eval/factuality/*.csv
+!/opendatagen/examples/never-seen-eval/factuality/*.ipynb
+!/opendatagen/examples/never-seen-eval/factuality/template.json

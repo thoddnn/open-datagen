@@ -1,0 +1,68 @@
+{
+    "factuality": {
+        "description": "Factuality",
+        "prompt": "Given the following text:\n\n'''{wikipedia_content}'''\n\nAnswer to this factually checkable question:\n'''{question}'''.",
+        "completion": "Here is the most relevant sentence in the context:'''{relevant_sentence}'''\n\nAnswer: '''{answer}'''",
+        "prompt_variation_number": 0,
+        "variables": {
+            "wikipedia_content": {
+                "name": "Wikipedia content",
+                "generation_number": 1,
+                "get_value_from_huggingface": {
+                    "dataset_name": "20220301.en",
+                    "dataset_path": "wikipedia",
+                    "column_name": "text",
+                    "max_tokens": 512
+                }
+            },
+            "question": {
+                "name": "Factually checkable question",
+                "generation_number": 1,
+                "models": [
+                    {
+                        "openai_chat_model": {
+                            "system_prompt": "You must compose a question about the provided text that can be answered factually using a citation from the text above, and the question must provide enough context to be understandable even when taken out of its context. You must write only one question. No verbose.",
+                            "name": "gpt-3.5-turbo-1106",
+                            "temperature": [0],
+                            "max_tokens": 128
+                        }
+                    }
+                ]
+            }, 
+            "relevant_sentence": {
+                "name": "The most relevant sentences",
+                "generation_number": 1,
+                "note": ["You must write the most relevant sentences from the text to answer the question."],
+                "models": [
+                    {
+                        
+                        "openai_instruct_model": {
+                            "name": "gpt-3.5-turbo-instruct",
+                            "start_with": ["Here is the most relevant sentences in the context:'''"],
+                            "temperature": [0],
+                            "max_tokens": 256
+                        }
+                    }
+                ]
+            
+            },
+            "answer": {
+                "name": "Short answer to the question",
+                "generation_number": 1,
+                "note": ["You must answer to the question accurately."],
+                "models": [
+                    {
+                        "openai_chat_model": {
+                            "name": "gpt-3.5-turbo-1106",
+                            "temperature": [0],
+                            "max_tokens": 128,
+                            "logprobs": true
+                        }
+                    }
+                ]
+            
+            }
+            
+        }
+    }
+}

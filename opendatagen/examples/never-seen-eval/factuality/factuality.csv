@@ -1,0 +1,71 @@
+prompt,evol_prompt,completion,wikipedia_content,error_message_wikipedia_content,confidence_wikipedia_content,question,error_message_question,confidence_question,relevant_sentence,error_message_relevant_sentence,confidence_relevant_sentence,answer,error_message_answer,confidence_answer
+"Given the following text:
+
+'''A document type definition (DTD) is a set of markup declarations that define a document type for an SGML-family markup language (GML, SGML, XML, HTML).
+
+A DTD defines the valid building blocks of an XML document. It defines the document structure with a list of validated elements and attributes. A DTD can be declared inline inside an XML document, or as an external reference.
+
+XML uses a subset of SGML DTD.
+
+, newer XML namespace-aware schema languages (such as W3C XML Schema and ISO RELAX NG) have largely superseded DTDs. A namespace-aware version of DTDs is being developed as Part 9 of ISO DSDL. DTDs persist in applications that need special publishing characters, such as the XML and HTML Character Entity References, which derive from larger sets defined as part of the ISO SGML standard effort.
+
+Associating DTDs with documents 
+A DTD is associated with an XML or SGML document by means of a document type declaration (DOCTYPE). The DOCTYPE appears in the syntactic fragment doctypedecl near the start of an XML document. The declaration establishes that the document is an instance of the type defined by the referenced DTD.
+
+DOCTYPEs make two sorts of declaration:
+ an optional external subset
+ an optional internal subset.
+
+The declarations in the internal subset form part of the DOCTYPE in the document itself. The declarations in the external subset are located in a separate text file. The external subset may be referenced via a public identifier and/or a system identifier. Programs for reading documents may not be required to read the external subset.
+
+Any valid SGML or XML document that references an external subset in its DTD, or whose body contains references to parsed external entities declared in its DTD (including those declared within its internal subset), may only be partially parsed but cannot be fully validated by validating SGML or XML parsers in their standalone mode (this means that these validating parsers don't attempt to retrieve these external entities, and their replacement text is not accessible).
+
+However, such documents are still fully parsable in the non-standalone mode of validating parsers, which signals an error if it can't locate these external entities with their specified public identifier (FPI) or system identifier (a URI), or are inaccessible. (Notations declared in the DTD are also referencing external entities, but these unparsed entities are not needed for the validation of documents in the standalone mode of these parsers: the validation of all external entities referenced by notations is left'''
+
+Answer to this factually checkable question:
+'''What is the purpose of a document type declaration (DOCTYPE) in an XML or SGML document?'''.","Given the following text:
+
+'''A document type definition (DTD) is a set of markup declarations that define a document type for an SGML-family markup language (GML, SGML, XML, HTML).
+
+A DTD defines the valid building blocks of an XML document. It defines the document structure with a list of validated elements and attributes. A DTD can be declared inline inside an XML document, or as an external reference.
+
+XML uses a subset of SGML DTD.
+
+, newer XML namespace-aware schema languages (such as W3C XML Schema and ISO RELAX NG) have largely superseded DTDs. A namespace-aware version of DTDs is being developed as Part 9 of ISO DSDL. DTDs persist in applications that need special publishing characters, such as the XML and HTML Character Entity References, which derive from larger sets defined as part of the ISO SGML standard effort.
+
+Associating DTDs with documents 
+A DTD is associated with an XML or SGML document by means of a document type declaration (DOCTYPE). The DOCTYPE appears in the syntactic fragment doctypedecl near the start of an XML document. The declaration establishes that the document is an instance of the type defined by the referenced DTD.
+
+DOCTYPEs make two sorts of declaration:
+ an optional external subset
+ an optional internal subset.
+
+The declarations in the internal subset form part of the DOCTYPE in the document itself. The declarations in the external subset are located in a separate text file. The external subset may be referenced via a public identifier and/or a system identifier. Programs for reading documents may not be required to read the external subset.
+
+Any valid SGML or XML document that references an external subset in its DTD, or whose body contains references to parsed external entities declared in its DTD (including those declared within its internal subset), may only be partially parsed but cannot be fully validated by validating SGML or XML parsers in their standalone mode (this means that these validating parsers don't attempt to retrieve these external entities, and their replacement text is not accessible).
+
+However, such documents are still fully parsable in the non-standalone mode of validating parsers, which signals an error if it can't locate these external entities with their specified public identifier (FPI) or system identifier (a URI), or are inaccessible. (Notations declared in the DTD are also referencing external entities, but these unparsed entities are not needed for the validation of documents in the standalone mode of these parsers: the validation of all external entities referenced by notations is left'''
+
+Answer to this factually checkable question:
+'''What is the purpose of a document type declaration (DOCTYPE) in an XML or SGML document?'''.","Here is the most relevant sentence in the context:'''The DOCTYPE appears in the syntactic fragment doctypedecl near the start of an XML document. The declaration establishes that the document is an instance of the type defined by the referenced DTD.'''
+
+Answer: '''The purpose of a document type declaration (DOCTYPE) in an XML or SGML document is to establish that the document is an instance of the type defined by the referenced DTD.'''","A document type definition (DTD) is a set of markup declarations that define a document type for an SGML-family markup language (GML, SGML, XML, HTML).
+
+A DTD defines the valid building blocks of an XML document. It defines the document structure with a list of validated elements and attributes. A DTD can be declared inline inside an XML document, or as an external reference.
+
+XML uses a subset of SGML DTD.
+
+, newer XML namespace-aware schema languages (such as W3C XML Schema and ISO RELAX NG) have largely superseded DTDs. A namespace-aware version of DTDs is being developed as Part 9 of ISO DSDL. DTDs persist in applications that need special publishing characters, such as the XML and HTML Character Entity References, which derive from larger sets defined as part of the ISO SGML standard effort.
+
+Associating DTDs with documents 
+A DTD is associated with an XML or SGML document by means of a document type declaration (DOCTYPE). The DOCTYPE appears in the syntactic fragment doctypedecl near the start of an XML document. The declaration establishes that the document is an instance of the type defined by the referenced DTD.
+
+DOCTYPEs make two sorts of declaration:
+ an optional external subset
+ an optional internal subset.
+
+The declarations in the internal subset form part of the DOCTYPE in the document itself. The declarations in the external subset are located in a separate text file. The external subset may be referenced via a public identifier and/or a system identifier. Programs for reading documents may not be required to read the external subset.
+
+Any valid SGML or XML document that references an external subset in its DTD, or whose body contains references to parsed external entities declared in its DTD (including those declared within its internal subset), may only be partially parsed but cannot be fully validated by validating SGML or XML parsers in their standalone mode (this means that these validating parsers don't attempt to retrieve these external entities, and their replacement text is not accessible).
+
+However, such documents are still fully parsable in the non-standalone mode of validating parsers, which signals an error if it can't locate these external entities with their specified public identifier (FPI) or system identifier (a URI), or are inaccessible. (Notations declared in the DTD are also referencing external entities, but these unparsed entities are not needed for the validation of documents in the standalone mode of these parsers: the validation of all external entities referenced by notations is left",,None,What is the purpose of a document type declaration (DOCTYPE) in an XML or SGML document?,,{},The DOCTYPE appears in the syntactic fragment doctypedecl near the start of an XML document. The declaration establishes that the document is an instance of the type defined by the referenced DTD.,,{},The purpose of a document type declaration (DOCTYPE) in an XML or SGML document is to establish that the document is an instance of the type defined by the referenced DTD.,,"{'document type declaration': 0.9999751315392253, 'DOCTYPE': 0.9999998063873687, 'XML': 1, 'SGML': 0.9999988527586581, 'document': 1, 'instance': 1, 'type': 1, 'referenced DTD': 0.999977753956447}"
