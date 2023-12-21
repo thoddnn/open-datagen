@@ -30,6 +30,4 @@ venv/
 *.ipynb
 *.json
 
-!/opendatagen/examples/never-seen-eval/factuality/*.csv
-!/opendatagen/examples/never-seen-eval/factuality/*.ipynb
-!/opendatagen/examples/never-seen-eval/factuality/template.json
+/opendatagen/examples/**
