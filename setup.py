@@ -28,6 +28,7 @@ setup(
         'pandas>=2',
         'datasets>=2',
         'mistralai',
-        'jsonschema'
+        'jsonschema',
+        'llama-cpp-python>=0.2.24'
     ],
 )

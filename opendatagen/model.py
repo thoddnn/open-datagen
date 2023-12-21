@@ -13,6 +13,7 @@ from mistralai.client import MistralClient
 from mistralai.models.chat_completion import ChatMessage
 import math 
 import tiktoken
+from llama_cpp import Llama
 
 N_RETRIES = 2
 
@@ -29,6 +30,35 @@ class ModelName(Enum):
     LLAMA_7B = "Llama-2-7b-chat-hf"
     LLAMA_13B = "Llama-2-13b-chat-hf"
     LLAMA_70B = "Llama-2-70b-chat-hf"
+
+class LlamaCPPModel(BaseModel):
+
+    path:str
+    temperature:Optional[List[float]] = [0.8]
+    max_tokens:Optional[int] = 256
+    top_p:Optional[float] = 0.95
+    min_p:Optional[float] = 0.05
+    echo:Optional[bool] = False
+    start_with:Optional[List[str]] = None
+    confidence_score:Optional[Dict] = {} 
+
+    def ask(self, messages:str) -> str:
+
+        llm = Llama(model_path=self.path, verbose=False)
+
+        if self.start_with:
+            starter = random.choice(self.start_with)
+        else:
+            starter = ""
+
+        output = llm(
+            prompt=f"{messages}\n{starter}", 
+            max_tokens=self.max_tokens, 
+            echo=self.echo,
+            temperature=random.choice(self.temperature),
+        )
+
+        return output["choices"][0]["text"]
 
 
 class MistralChatModel(BaseModel):
@@ -237,6 +267,7 @@ class Model(BaseModel):
     openai_chat_model: Optional[OpenAIChatModel] = None 
     huggingface_model:Optional[HuggingFaceModel] = None 
     openai_instruct_model: Optional[OpenAIInstructModel] = None 
+    llamacpp_instruct_model: Optional[LlamaCPPModel] = None 
     mistral_chat_model:Optional[MistralChatModel] = None 
 
     def get_model(self):
@@ -248,6 +279,8 @@ class Model(BaseModel):
             return self.huggingface_model
         elif self.mistral_chat_model is not None:
             return self.mistral_chat_model
+        elif self.llamacpp_instruct_model is not None:
+            return self.llamacpp_instruct_model
         else:
             return None
         

@@ -13,7 +13,7 @@ from opendatagen.utils import dict_to_string, load_file, write_to_csv, generate_
 from opendatagen.utils import snake_case_to_title_case, title_case_to_snake_case
 from opendatagen.utils import extract_content_from_internet
 from opendatagen.anonymizer import Anonymizer
-from opendatagen.model import OpenAIChatModel, OpenAIInstructModel, OpenAIEmbeddingModel, ModelName, MistralChatModel
+from opendatagen.model import OpenAIChatModel, OpenAIInstructModel, OpenAIEmbeddingModel, ModelName, MistralChatModel, LlamaCPPModel
 from opendatagen.template import Template, Variable, Variations, create_variable_from_name
 from opendatagen.utils import function_to_call
 from mistralai.client import MistralClient
@@ -32,7 +32,7 @@ class DataGenerator:
 
     def extract_variable_from_string(self, text:str):
         return findall(r'\{(.*?)\}', text)
-    
+
     def extract_variable_dict_from_string(self, text:str):
         
         list_of_variables = findall(r'\{(.*?)\}', text)
@@ -45,8 +45,7 @@ class DataGenerator:
                 result[variable_id] = variable
 
         return result
-      
-
+    
 
 
     def anonymize_text(self, text_to_anonymize):
@@ -186,7 +185,7 @@ class DataGenerator:
 
             current_model = random.choice(current_variable.models).get_model()
 
-            if isinstance(current_model, OpenAIInstructModel): 
+            if isinstance(current_model, OpenAIInstructModel) or isinstance(current_model, LlamaCPPModel): 
                 if current_model.start_with:
                     start_with = random.choice(current_model.start_with)
                 else:
@@ -229,7 +228,7 @@ class DataGenerator:
                                                         context=prompt_text)
                 
 
-            if isinstance(current_model, OpenAIInstructModel):
+            if isinstance(current_model, OpenAIInstructModel) or isinstance(current_model, LlamaCPPModel):
 
                 start_messages = temp_variation_prompt
             
@@ -291,7 +290,7 @@ class DataGenerator:
 
                     else:
 
-                        if isinstance(current_model, OpenAIInstructModel):
+                        if isinstance(current_model, OpenAIInstructModel) or isinstance(current_model, LlamaCPPModel):
 
                             start_messages = f"{start_messages}\n\nAssistant:{generated_value}\n\nUser:{new_message}"
 
