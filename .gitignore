@@ -30,4 +30,10 @@ venv/
 *.ipynb
 *.json
 
-/opendatagen/examples/**
+!/opendatagen/examples/local-inference/*.csv
+!/opendatagen/examples/local-inference/*.ipynb
+!/opendatagen/examples/local-inference/template.json
+
+!/opendatagen/examples/never-seen-eval/factuality/*.csv
+!/opendatagen/examples/never-seen-eval/factuality/*.ipynb
+!/opendatagen/examples/never-seen-eval/factuality/template.json

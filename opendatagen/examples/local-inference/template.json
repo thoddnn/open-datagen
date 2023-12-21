@@ -1,0 +1,38 @@
+{
+    "short_story": {
+        "description": "Short story",
+        "prompt": "Write a short story about {topic}",
+        "completion": "'''{short_story}'''",
+        "prompt_variation_number": 0,
+        "variables": {
+            "topic": {
+                "name": "Topic",
+                "generation_number": 5,
+                "note": ["The topic must be about sport"],
+                "models": [
+                    {
+                        "llamacpp_instruct_model": {
+                            "path": "path_to_GGUF",
+                            "temperature": [0],
+                            "max_tokens": 16
+                        }
+                    }
+                ]
+            },
+            "short_story": {
+                "name": "Short story",
+                "generation_number": 1,
+                "models": [
+                    {
+                        "llamacpp_instruct_model": {
+                            "path": "path_to_GGUF",
+                            "temperature": [1],
+                            "max_tokens": 256
+                        }
+                    }
+                ]
+            }
+            
+        }
+    }
+}
