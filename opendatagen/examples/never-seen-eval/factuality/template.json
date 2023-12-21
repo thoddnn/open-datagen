@@ -7,7 +7,7 @@
         "variables": {
             "wikipedia_content": {
                 "name": "Wikipedia content",
-                "generation_number": 1,
+                "generation_number": 50,
                 "get_value_from_huggingface": {
                     "dataset_name": "20220301.en",
                     "dataset_path": "wikipedia",
@@ -17,7 +17,7 @@
             },
             "question": {
                 "name": "Factually checkable question",
-                "generation_number": 1,
+                "generation_number": 2,
                 "models": [
                     {
                         "openai_chat_model": {
@@ -55,8 +55,7 @@
                         "openai_chat_model": {
                             "name": "gpt-3.5-turbo-1106",
                             "temperature": [0],
-                            "max_tokens": 128,
-                            "logprobs": true
+                            "max_tokens": 128
                         }
                     }
                 ]
