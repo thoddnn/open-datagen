@@ -165,7 +165,9 @@ We would like to express our gratitude to the following open source projects and
 
 - **Textbook Generation** by [VikParuchuri](https://github.com/VikParuchuri/textbook_quality)
 
-
 ## Connect
 
-Reach us on Twitter: [@thoddnn](https://twitter.com/thoddnn).
+If you need help for your Generative AI strategy, implementation, and infrastructure, reach us on
+
+Linkedin: [@Thomas](https://linkedin.com/in/thomasdordonne).
+Twitter: [@thoddnn](https://twitter.com/thoddnn).
