@@ -1,14 +1,19 @@
 # ⬜️ Open Datagen ⬜️
 
-**Open Datagen**, a data preparation system to build controllable AI system
+**Open Datagen** is a Data Preparation Tool designed to build Controllable AI Systems
 
-## Features
+It offers:
 
-- Generate high-quality synthetic datasets using simple templates
+**RAG**: Generate large Q&A datasets to improve your Retrieval strategies.
+**Evals**: Create unique, “unseen” datasets to robustly test your models and avoid overfitting.
+**Fine-Tuning**: Produce large, low-bias, and high-quality datasets to get better models after the fine-tuning process.
+**Guardrails**: Generate red teaming datasets to strengthen the security and robustness of your Generative AI applications against attack.
 
-- Quality enhancement with RAG from Internet and local files
+## Additional Features
 
-- Data anonymization
+- Use external sources to generate high-quality synthetic data (Local files, Hugging Face datasets and Internet)
+
+- Data anonymization 
 
 - Data evaluation & cleaning agent
 
