@@ -2,7 +2,7 @@
 
 **Open Datagen** is a Data Preparation Tool designed to build Controllable AI Systems
 
-It offers:
+It offers improvements for:
 
 **RAG**: Generate large Q&A datasets to improve your Retrieval strategies.
 
