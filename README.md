@@ -5,8 +5,11 @@
 It offers:
 
 **RAG**: Generate large Q&A datasets to improve your Retrieval strategies.
+
 **Evals**: Create unique, “unseen” datasets to robustly test your models and avoid overfitting.
+
 **Fine-Tuning**: Produce large, low-bias, and high-quality datasets to get better models after the fine-tuning process.
+
 **Guardrails**: Generate red teaming datasets to strengthen the security and robustness of your Generative AI applications against attack.
 
 ## Additional Features
