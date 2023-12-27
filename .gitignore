@@ -37,3 +37,8 @@ venv/
 !/opendatagen/examples/never-seen-eval/factuality/*.csv
 !/opendatagen/examples/never-seen-eval/factuality/*.ipynb
 !/opendatagen/examples/never-seen-eval/factuality/template.json
+
+!/opendatagen/examples/retrieval/qa-eu-ai-act/*.csv
+!/opendatagen/examples/retrieval/qa-eu-ai-act/*.pdf
+!/opendatagen/examples/retrieval/qa-eu-ai-act/*.ipynb
+!/opendatagen/examples/retrieval/qa-eu-ai-act/template.json

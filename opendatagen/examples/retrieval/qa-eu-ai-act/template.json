@@ -1,0 +1,50 @@
+{
+    "retrieval": {
+        "description": "Text",
+        "prompt": "This following text is a sample of the 'EU AI Act' regulation paper:\n'''\n{text}\n'''\n\nNow write a question about the given text:\n'''{question}'''",
+        "completion": "Answer:\n'''{answer}'''",
+        "prompt_variation_number": 0,
+        "variables": {
+            "text": {
+                "name": "Text",
+                "generation_number": 3,
+                "get_value_from_localfile": {
+                    "localPath": "opendatagen/AI-act.pdf",
+                    "randomize": true,
+                    "sample_size": 0.01
+                }
+                
+            },
+            "question": {
+                "name": "Question",
+                "generation_number": 5,
+                "models": [
+                    {
+                        "openai_chat_model": {
+                            "system_prompt": "You are QuestionGPT, you must compose an interesting question about the provided text that can be answered factually using a citation from the text, and the question must provide enough context to be understandable even when taken out of its context. You must write only one question. No verbose.",
+                            "name": "gpt-3.5-turbo-1106",
+                            "temperature": [0, 0.5, 1],
+                            "max_tokens": 128
+                        }
+                    }
+                ]
+            },
+            "answer": {
+                "name": "Short answer to the question",
+                "generation_number": 1,
+                "note": ["You must answer to the question accurately."],
+                "models": [
+                    {
+                        "openai_chat_model": {
+                            "name": "gpt-3.5-turbo-1106",
+                            "temperature": [0],
+                            "max_tokens": 256
+                        }
+                    }
+                ]
+            
+            }
+            
+        }
+    }
+}
