@@ -186,6 +186,9 @@ class OpenAIChatModel(BaseModel):
         
         return answer
 
+class OpenAIEmbeddingModel(BaseModel):
+
+    name:str = ""
 
 class OpenAIInstructModel(BaseModel):
 
@@ -261,6 +264,16 @@ class OpenAIEmbeddingModel(BaseModel):
         )
 
         return embedding["data"][0]["embedding"]
+
+class EmbeddingModel(BaseModel):
+
+    openai_embedding_model:Optional[OpenAIEmbeddingModel] = None 
+
+    def get_model(self):
+        if self.openai_embedding_model is not None:
+            return self.openai_embedding_model
+        else:
+            return None
 
 class Model(BaseModel):
 

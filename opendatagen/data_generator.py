@@ -11,7 +11,7 @@ from re import findall
 from typing import Dict, List, Union
 from opendatagen.utils import dict_to_string, load_file, write_to_csv, generate_context_from_json, extract_website_details, create_type_message, find_strings_in_brackets
 from opendatagen.utils import snake_case_to_title_case, title_case_to_snake_case
-from opendatagen.utils import extract_content_from_internet
+from opendatagen.utils import extract_content_from_internet, clean_string
 from opendatagen.anonymizer import Anonymizer
 from opendatagen.model import OpenAIChatModel, OpenAIInstructModel, OpenAIEmbeddingModel, ModelName, MistralChatModel, LlamaCPPModel
 from opendatagen.template import Template, Variable, Variations, create_variable_from_name
@@ -115,6 +115,41 @@ class DataGenerator:
         generation_number = current_variable.generation_number
 
         variations = {}
+
+        if current_variable.get_value_from_localfile:
+
+            for _ in range(generation_number):
+
+                generated_value = current_variable.get_value_from_localfile.get_content_from_file()
+
+                if parent_id:
+
+                    new_id = str(uuid.uuid4())
+
+                    new_value = Variations(id=new_id, parent_id=parent_id, value=generated_value)
+
+                    current_variable.values[new_id] = new_value
+
+                    self.template.variables[new_id]
+
+                    variations[new_id] = new_value
+
+                    self.template.variables[variable_id_string].values[new_id] = new_value
+
+                else:
+
+                    id_loop = str(uuid.uuid4())
+
+                    new_value = Variations(id=id_loop, parent_id=id_loop, value=generated_value)
+
+                    current_variable.values[id_loop] = new_value
+
+                    variations[id_loop] = new_value
+
+                    self.template.variables[variable_id_string].values[id_loop] = new_value
+
+            return variations
+        
 
         if current_variable.get_value_from_huggingface:
 
@@ -226,7 +261,8 @@ class DataGenerator:
                                                         last_values=last_values,
                                                         note=note,
                                                         context=prompt_text)
-                
+            
+            temp_variation_prompt = clean_string(temp_variation_prompt)
 
             if isinstance(current_model, OpenAIInstructModel) or isinstance(current_model, LlamaCPPModel):
 

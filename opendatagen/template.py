@@ -4,7 +4,7 @@ from enum import Enum
 import os
 import json
 from opendatagen.utils import load_file
-from opendatagen.model import OpenAIChatModel, OpenAIInstructModel, OpenAIEmbeddingModel, HuggingFaceModel, Model
+from opendatagen.model import OpenAIChatModel, OpenAIInstructModel, OpenAIEmbeddingModel, HuggingFaceModel, Model, EmbeddingModel
 from urllib.parse import quote_plus
 import requests
 import trafilatura
@@ -14,6 +14,8 @@ from datasets import load_dataset, Dataset
 from opendatagen.utils import get_first_n_tokens, num_tokens_from_string
 import random
 import uuid
+import re 
+import pandas as pd
 
 
 class RAGHuggingFace(BaseModel):
@@ -49,7 +51,7 @@ class RAGHuggingFace(BaseModel):
 
         subset = [sample[self.column_name] for _, sample in zip(range(self.subset_size), dst["train"])]
 
-        max_attempts = 100
+        max_attempts = 50
         count = 0
 
         while count < max_attempts:
@@ -79,44 +81,60 @@ class RAGHuggingFace(BaseModel):
             count = count + 1
 
 
-
-    """
-    def get_n_nearest_value_from_dataset(self, n:int=1, prompt:str)
-    """
-
-
 class RAGLocalPath(BaseModel):
 
     localPath:Optional[str] = None
     directoryPath:Optional[str] = None
     content:Optional[str] = None
+    randomize:Optional[bool] = False  
+    sample_size: Optional[float] = 0.1
 
     class Config:
         extra = "forbid"
 
+    def get_random_csv_chunk(self, df: pd.DataFrame):
+        # Randomly sample a fraction of the dataframe rows
+        return df.sample(frac=self.sample_size)
+    
+    def get_random_text_chunk(self, text):
+
+        sentences = re.split(r'(?<=[.!?])\s+', text)
+        sample_size = max(1, int(len(sentences) * self.sample_size))
+        selected_sentences = random.sample(sentences, sample_size)
+        result = ' '.join(selected_sentences)
+        return result
+
     def get_content_from_file(self):
-        """
-        Reads the content from a file based on its extension.
-        Handles CSV, TXT, and PDF files.
-        """
+
         file_content = ''
+
         if self.localPath.endswith('.csv'):
             df = pd.read_csv(self.localPath)
             df = df.astype(str)
+            if self.randomize:
+                df = self.get_random_csv_chunk(df)
             file_content = df.to_string(header=True, index=False, max_rows=None)
-            print(file_content)
         elif self.localPath.endswith('.txt'):
             with open(self.localPath, 'r') as file:
                 file_content = file.read()
+                if self.randomize:
+                    file_content = self.get_random_text_chunk(file_content)
         elif self.localPath.endswith('.pdf'):
             reader = PdfReader(self.localPath)
+            text = ''
             for page in reader.pages:
-                file_content += page.extract_text() + '\n'
+                text += page.extract_text() + '\n'
+            if self.randomize:
+                file_content = self.get_random_text_chunk(text)
+            else:
+                file_content = text
         else:
             raise ValueError("Unsupported file format")
 
         self.content = file_content
         return file_content
+    
+
 
     def get_content_from_directory(self):
         """
@@ -281,6 +299,12 @@ class Variable(BaseModel):
             self.value = self.get_value_from_huggingface.get_random_value_from_dataset(max_token=self.max_tokens)
 
 
+class Decontomination(BaseModel):
+
+    embedding_model:Optional[EmbeddingModel] = None 
+    threshold: Optional[float] = 0.99
+    exclude_string:Optional[List[str]] = None 
+    
 
 class Template(BaseModel):
 
@@ -293,6 +317,7 @@ class Template(BaseModel):
     source_localfile: Optional[RAGLocalPath] = None
     rag_content: Optional[str] = None
     value:Optional[List[str]] = None
+    decontamination: Optional[Decontomination] = None 
 
     class Config:
         extra = "forbid"  # This will raise an error for extra fields

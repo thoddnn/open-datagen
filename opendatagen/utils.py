@@ -258,3 +258,9 @@ def get_first_n_tokens(text: str, encoding_name: str, n: int, cut_last_sentence:
     # Decode the tokens back to string
     return encoding.decode(tokens)
 
+
+def clean_string(original_string:str):
+
+    cleaned_string = re.sub(r'\n+', '\n\n', original_string).strip()
+    
+    return cleaned_string
