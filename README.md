@@ -18,13 +18,11 @@ It offers improvements for:
 
 - Data anonymization 
 
-- Data evaluation & cleaning agent
-
 - Open-source model support + local inference
 
-- (SOON) Data decontamination
+- (SOON) Open DataGen Agent
 
-- (SOON) Multimodality
+- (SOON) Web or Desktop app 🤔
 
 ## Installation
 
