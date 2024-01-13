@@ -42,3 +42,5 @@ venv/
 !/opendatagen/examples/retrieval/qa-eu-ai-act/*.pdf
 !/opendatagen/examples/retrieval/qa-eu-ai-act/*.ipynb
 !/opendatagen/examples/retrieval/qa-eu-ai-act/template.json
+
+!/opendatagen/files/*.txt

@@ -1,0 +1,4 @@
+We would like you to evaluate and rate the difficulty and complexity of the following question. You should give an overall score on a scale of 1 to 10, where a higher score indicates higher difficulty and complexity. You must just give a score without any other reasons.
+## Question:
+{prompt}
+## Score:
