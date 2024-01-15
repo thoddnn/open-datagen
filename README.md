@@ -135,16 +135,6 @@ Using this template you will:
 3) Generate an short answer 
 4) Rate the answer
 
-Once the CSV created, you can ask an AI Agent to evaluate and correct your dataset
-
-```python
-from opendatagen.agent import DataAgent
-
-agent = DataAgent()
-
-agent.run()
-```
-
 ## Contribution
 
 We welcome contributions to Open Datagen! Whether you're looking to fix bugs, add templates, new features, or improve documentation, your help is greatly appreciated.
