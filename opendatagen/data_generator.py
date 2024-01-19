@@ -13,7 +13,7 @@ from opendatagen.utils import dict_to_string, load_file, write_to_csv, generate_
 from opendatagen.utils import snake_case_to_title_case, title_case_to_snake_case
 from opendatagen.utils import extract_content_from_internet, clean_string
 from opendatagen.anonymizer import Anonymizer
-from opendatagen.model import OpenAIChatModel, OpenAIInstructModel, OpenAIEmbeddingModel, ModelName, MistralChatModel, LlamaCPPModel
+from opendatagen.model import OpenAIChatModel, OpenAIInstructModel, OpenAIEmbeddingModel, ModelName, MistralChatModel, LlamaCPPModel, TogetherChatModel
 from opendatagen.template import Template, Variable, Variations, create_variable_from_name
 from opendatagen.utils import function_to_call
 from mistralai.client import MistralClient
@@ -277,7 +277,17 @@ class DataGenerator:
                 
             elif isinstance(current_model, MistralChatModel):
 
-                start_messages = [ChatMessage(role="user", content=temp_variation_prompt)]
+                start_messages = [
+                    ChatMessage(role="system", content= current_model.system_prompt),
+                    ChatMessage(role="user", content=temp_variation_prompt)
+                ]
+
+            elif isinstance(current_model, TogetherChatModel):
+            
+                start_messages = [
+                    {"role": "system", "content": current_model.system_prompt},
+                    {"role": "user", "content": temp_variation_prompt},
+                ] 
                 
             else:
 
@@ -353,9 +363,8 @@ class DataGenerator:
                 new_value = Variations(id=variation_id, parent_id=parent_id, value=generated_value, confidence_score=current_model.confidence_score)
                 current_variable.values[variation_id] = new_value
 
-            
             last_values_list.append(generated_value)
-
+            
             # Create the desired string format if last_values_list is not empty
             if last_values_list:
                 last_values = "You must generate a content value that is not similar to following values:\n'''" + "\n".join(last_values_list) + "\n'''"

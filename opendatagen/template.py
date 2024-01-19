@@ -1,5 +1,5 @@
 from pydantic import BaseModel, validator, ValidationError, ConfigDict
-from typing import Optional, List, Dict, Union
+from typing import Optional, List, Dict, Union, Any 
 from enum import Enum
 import os
 import json
@@ -28,37 +28,44 @@ class RAGHuggingFace(BaseModel):
     min_tokens:Optional[int] = 0
     max_tokens:Optional[int] = None
     subset_size:Optional[int] = 10000
+    subset:Optional[List[str]] = None   
+    dst:Optional[Any] = None 
 
     class Config:
         extra = "forbid"
+    
 
     def get_random_value_from_dataset(self):
 
-        param = {}
+        if self.subset == None: 
 
-        if self.dataset_path:
-            param["path"] = self.dataset_path
+            param = {}
 
-        if self.data_dir:
-            param["data_dir"] = self.data_dir
+            if self.dataset_path:
+                param["path"] = self.dataset_path
 
-        if self.dataset_name:
-            param["name"] = self.dataset_name
+            if self.data_dir:
+                param["data_dir"] = self.data_dir
 
-        param["streaming"] = self.streaming
+            if self.dataset_name:
+                param["name"] = self.dataset_name
 
-        dst = load_dataset(**param)
+            param["streaming"] = self.streaming
 
-        subset = [sample[self.column_name] for _, sample in zip(range(self.subset_size), dst["train"])]
+            self.dst = load_dataset(**param)
 
+            self.subset = [sample[self.column_name] for _, sample in zip(range(self.subset_size), self.dst["train"])]
+
+            self.dst = None 
+    
         max_attempts = 50
         count = 0
 
         while count < max_attempts:
 
-            index = random.randint(0, len(subset) - 1)
+            index = random.randint(0, len(self.subset) - 1)
 
-            text = subset[index]
+            text = self.subset[index]
 
             num_tokens = num_tokens_from_string(text, encoding_name="cl100k_base")
 
@@ -66,7 +73,7 @@ class RAGHuggingFace(BaseModel):
 
                 if self.max_tokens:
 
-                    text = subset[index]
+                    text = self.subset[index]
 
                     result = get_first_n_tokens(n=self.max_tokens, text=text, encoding_name="cl100k_base")
                     
@@ -74,7 +81,7 @@ class RAGHuggingFace(BaseModel):
 
                 else:
 
-                    result = subset[index]
+                    result = self.subset[index]
 
                     return result
 
@@ -291,11 +298,12 @@ class Variable(BaseModel):
     def load_huggingface_dataset(self):
 
         if self.source_huggingface is not None:
+            self.source_huggingface.load_data()
             self.rag_content = self.source_huggingface.get_random_value_from_dataset()
 
     def load_value(self):
-
         if self.get_value_from_huggingface:
+            self.source_huggingface.load_data()
             self.value = self.get_value_from_huggingface.get_random_value_from_dataset(max_token=self.max_tokens)
 
 

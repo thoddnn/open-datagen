@@ -61,12 +61,116 @@ class LlamaCPPModel(BaseModel):
         return output["choices"][0]["text"]
 
 
+class TogetherChatModel(BaseModel):
+
+    name:str = "mistralai/Mixtral-8x7B-Instruct-v0.1"
+    system_prompt:Optional[str] = "No verbose."
+    max_tokens:Optional[int] = 256
+    temperature:Optional[List[float]] = [1]
+    json_mode:Optional[bool] = False 
+    seed:Optional[int] = None 
+    tools:Optional[list] = None 
+    top_p:Optional[int] = 1 
+    stop:Optional[List[str]] = ["</s>", "[/INST]"] 
+    presence_penalty: Optional[float] = 0
+    frequency_penalty: Optional[float] = 0 
+    client:Optional[Type[OpenAI]] = None 
+    logprobs:Optional[bool] = False 
+    confidence_score:Optional[Dict] = {} 
+    
+    def __init__(self, **data):
+
+        super().__init__(**data)
+        self.client = OpenAI(api_key=os.getenv("TOGETHER_API_KEY"), base_url='https://api.together.xyz',)
+
+
+    @retry(retry=retry_if_result(is_retryable_answer), stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
+    def ask(self, messages) -> str:
+        
+        param = {
+
+            "model":self.name,
+            "temperature": random.choice(self.temperature),
+            "messages": messages
+
+        }
+
+        if self.stop:
+            param["stop"] = self.stop
+        
+        if self.max_tokens:
+            param["max_tokens"] = self.max_tokens
+
+        if self.json_mode:
+            param["response_format"] = {"type": "json_object"}
+
+        completion = self.client.chat.completions.create(**param)
+
+        if self.logprobs:
+            self.confidence_score = get_confidence_score(completion=completion)
+
+        answer = completion.choices[0].message.content
+        
+        return answer
+
+class TogetherInstructModel(BaseModel):
+
+    name:str = "mistralai/Mixtral-8x7B-Instruct-v0.1"
+    max_tokens:Optional[int] = 256
+    temperature:Optional[List[float]] = [1]
+    messages:Optional[str] = None 
+    seed:Optional[int] = None 
+    tools:Optional[List[str]] = None 
+    start_with:Optional[List[str]] = None
+    top_p:Optional[int] = 1 
+    stop:Optional[List[str]] = None 
+    presence_penalty: Optional[float] = 0
+    frequency_penalty: Optional[float] = 0 
+    client:Optional[Type[OpenAI]] = None 
+    confidence_score:Optional[Dict] = {} 
+
+    def __init__(self, **data):
+
+        super().__init__(**data)
+        self.client = OpenAI(api_key=os.getenv("TOGETHER_API_KEY"), base_url='https://api.together.xyz',)
+
+    
+    @retry(stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
+    def ask(self, messages:str) -> str:
+
+        if self.start_with:
+            starter = random.choice(self.start_with)
+        else:
+            starter = ""
+
+        param = {
+
+            "model":self.name,
+            "temperature": random.choice(self.temperature),
+            "prompt": f"{messages}\n\n{starter}"
+
+        }
+
+        if self.stop:
+            param["stop"] = self.stop
+        
+        if self.max_tokens:
+            param["max_tokens"] = self.max_tokens
+
+
+        completion = self.client.completions.create(**param)
+
+        answer = completion.choices[0].text 
+
+        return answer
+
+
 class MistralChatModel(BaseModel):
 
     name:str = "mistral-tiny"
     max_tokens:Optional[int] = 256
     temperature:Optional[List[float]] = [0.7]
-    messages:Optional[str] = None 
+    system_prompt:Optional[str] = None 
     random_seed:Optional[int] = None 
     top_p:Optional[int] = 1 
     safe_mode:Optional[bool] = False 
@@ -133,7 +237,7 @@ class OpenAIChatModel(BaseModel):
     seed:Optional[int] = None 
     tools:Optional[list] = None 
     top_p:Optional[int] = 1 
-    stop:Optional[str] = None 
+    stop:Optional[List[str]] = None 
     presence_penalty: Optional[float] = 0
     frequency_penalty: Optional[float] = 0 
     client:Optional[Type[OpenAI]] = None 
@@ -159,15 +263,15 @@ class OpenAIChatModel(BaseModel):
 
         }
 
+        if self.stop:
+            param["stop"] = self.stop
+        
         if self.tools:
             param["functions"] = self.tools
         
         if self.max_tokens:
             param["max_tokens"] = self.max_tokens
 
-        if self.seed:
-            param["seed"] = self.seed
-        
         if self.max_tokens:
             param["max_tokens"] = self.max_tokens
 
@@ -200,7 +304,7 @@ class OpenAIInstructModel(BaseModel):
     tools:Optional[List[str]] = None 
     start_with:Optional[List[str]] = None
     top_p:Optional[int] = 1 
-    stop:Optional[str] = None 
+    stop:Optional[List[str]] = None 
     presence_penalty: Optional[float] = 0
     frequency_penalty: Optional[float] = 0 
     client:Optional[Type[OpenAI]] = None 
@@ -231,6 +335,9 @@ class OpenAIInstructModel(BaseModel):
 
         }
 
+        if self.stop:
+            param["stop"] = self.stop
+
         if self.tools:
             param["functions"] = self.tools
         
@@ -246,9 +353,10 @@ class OpenAIInstructModel(BaseModel):
 
         return answer
 
+
 class OpenAIEmbeddingModel(BaseModel):
 
-    name:str
+    name:str = "text-embedding-ada-002"
     
     def __init__(self, **data):
         super().__init__(**data)
@@ -259,10 +367,10 @@ class OpenAIEmbeddingModel(BaseModel):
     def create_embedding(self, prompt:str):
         
         embedding = self.client.embeddings.create(
-            model=self.model_name,
+            model=self.name,
             input=prompt
         )
-
+        
         return embedding["data"][0]["embedding"]
 
 class EmbeddingModel(BaseModel):
@@ -281,7 +389,8 @@ class Model(BaseModel):
     huggingface_model:Optional[HuggingFaceModel] = None 
     openai_instruct_model: Optional[OpenAIInstructModel] = None 
     llamacpp_instruct_model: Optional[LlamaCPPModel] = None 
-    mistral_chat_model:Optional[MistralChatModel] = None 
+    mistral_chat_model:Optional[MistralChatModel] = None
+    together_chat_model:Optional[TogetherChatModel] = None  
 
     def get_model(self):
         if self.openai_chat_model is not None:
@@ -294,6 +403,8 @@ class Model(BaseModel):
             return self.mistral_chat_model
         elif self.llamacpp_instruct_model is not None:
             return self.llamacpp_instruct_model
+        elif self.together_chat_model is not None:
+            return self.together_chat_model
         else:
             return None
         
