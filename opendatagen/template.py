@@ -251,7 +251,7 @@ class Variations(BaseModel):
     id:str
     parent_id:Optional[str] = None
     value:str
-    confidence_score:Optional[Dict] = None 
+    confidence_score:Optional[float] = None  
     error_message:str = None
 
     class Config:

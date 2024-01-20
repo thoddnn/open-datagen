@@ -40,7 +40,7 @@ class LlamaCPPModel(BaseModel):
     min_p:Optional[float] = 0.05
     echo:Optional[bool] = False
     start_with:Optional[List[str]] = None
-    confidence_score:Optional[Dict] = {} 
+    confidence_score:Optional[float] = None
 
     def ask(self, messages:str) -> str:
 
@@ -76,7 +76,7 @@ class TogetherChatModel(BaseModel):
     frequency_penalty: Optional[float] = 0 
     client:Optional[Type[OpenAI]] = None 
     logprobs:Optional[bool] = False 
-    confidence_score:Optional[Dict] = {} 
+    confidence_score:Optional[float] = None
     
     def __init__(self, **data):
 
@@ -127,7 +127,7 @@ class TogetherInstructModel(BaseModel):
     presence_penalty: Optional[float] = 0
     frequency_penalty: Optional[float] = 0 
     client:Optional[Type[OpenAI]] = None 
-    confidence_score:Optional[Dict] = {} 
+    confidence_score:Optional[float] = None 
 
     def __init__(self, **data):
 
@@ -175,7 +175,7 @@ class MistralChatModel(BaseModel):
     top_p:Optional[int] = 1 
     safe_mode:Optional[bool] = False 
     client:Optional[Type[MistralClient]] = None 
-    confidence_score:Optional[Dict] = {} 
+    confidence_score:Optional[float] = None 
 
     def __init__(self, **data):
         
@@ -242,7 +242,7 @@ class OpenAIChatModel(BaseModel):
     frequency_penalty: Optional[float] = 0 
     client:Optional[Type[OpenAI]] = None 
     logprobs:Optional[bool] = False 
-    confidence_score:Optional[Dict] = {} 
+    confidence_score:Optional[float] = None 
     
     def __init__(self, **data):
         super().__init__(**data)
@@ -287,6 +287,8 @@ class OpenAIChatModel(BaseModel):
             self.confidence_score = get_confidence_score(completion=completion)
 
         answer = completion.choices[0].message.content
+
+
         
         return answer
 
@@ -308,16 +310,13 @@ class OpenAIInstructModel(BaseModel):
     presence_penalty: Optional[float] = 0
     frequency_penalty: Optional[float] = 0 
     client:Optional[Type[OpenAI]] = None 
-    confidence_score:Optional[Dict] = {} 
-
+    confidence_score:Optional[float] = None
 
     def __init__(self, **data):
         super().__init__(**data)
 
         self.client = OpenAI()
         self.client.api_key = os.getenv("OPENAI_API_KEY")
-
-    
         
     @retry(stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
     def ask(self, messages:str) -> str:
@@ -457,7 +456,17 @@ def get_confidence_score(completion):
     
     logp_dict = convert_openailogprobs_to_dict(completion=completion)
 
-    keywords = json.loads(extract_keyword_from_text(text=completion.choices[0].message.content))["keywords"]
+    extract = extract_keyword_from_text(text=completion.choices[0].message.content)
+
+    extract_json = json.loads(extract)
+
+    if "keywords" in extract_json:
+        keywords = extract_json["keywords"]
+    else:
+        keywords = []
+
+    if len(keywords) == 0:
+        keywords = list(logp_dict.keys())
 
     for keyword in keywords:
 
@@ -483,4 +492,7 @@ def get_confidence_score(completion):
             
             print(f"Error decoding token {token}: {e}")
 
-    return confidence_score
+
+    min_confidence_score = min(confidence_score.values())
+
+    return min_confidence_score

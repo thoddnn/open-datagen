@@ -106,7 +106,7 @@ class DataGenerator:
                 fixed_variables=fixed_variables,
                 parent_id=id
             ))
-
+        
         # Return the list of all variation dictionaries generated
         return result
 
@@ -364,7 +364,7 @@ class DataGenerator:
                 current_variable.values[variation_id] = new_value
 
             last_values_list.append(generated_value)
-            
+
             # Create the desired string format if last_values_list is not empty
             if last_values_list:
                 last_values = "You must generate a content value that is not similar to following values:\n'''" + "\n".join(last_values_list) + "\n'''"
@@ -385,7 +385,7 @@ class DataGenerator:
                         {"role": "system", "content": "Answer as a valid JSON like {\"prompts\": [\"XXXX\", \"YYYY\"]}"},
                         {"role": "user", "content": evol_instruct_prompt},
                 ]
-
+        
         evol_instruct_model = OpenAIChatModel(model_name=ModelName.GPT_35_TURBO_CHAT.value)
 
         diversified_prompt_list = evol_instruct_model.ask(max_tokens=512,
