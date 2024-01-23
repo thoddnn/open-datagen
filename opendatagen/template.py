@@ -24,6 +24,7 @@ class RAGHuggingFace(BaseModel):
     dataset_name:Optional[str] = None
     data_dir:Optional[str] = None
     column_name:str
+    specific_row:Optional[int] = None 
     streaming:bool = True
     min_tokens:Optional[int] = 0
     max_tokens:Optional[int] = None
@@ -57,14 +58,21 @@ class RAGHuggingFace(BaseModel):
             self.subset = [sample[self.column_name] for _, sample in zip(range(self.subset_size), self.dst["train"])]
 
             self.dst = None 
-    
+
         max_attempts = 50
+
+        if self.specific_row:
+            max_attempts = 1
+      
         count = 0
 
         while count < max_attempts:
 
-            index = random.randint(0, len(self.subset) - 1)
-
+            if self.specific_row:
+                index = self.specific_row
+            else:
+                index = random.randint(0, len(self.subset) - 1)
+                
             text = self.subset[index]
 
             num_tokens = num_tokens_from_string(text, encoding_name="cl100k_base")
@@ -298,12 +306,11 @@ class Variable(BaseModel):
     def load_huggingface_dataset(self):
 
         if self.source_huggingface is not None:
-            self.source_huggingface.load_data()
             self.rag_content = self.source_huggingface.get_random_value_from_dataset()
 
     def load_value(self):
+        
         if self.get_value_from_huggingface:
-            self.source_huggingface.load_data()
             self.value = self.get_value_from_huggingface.get_random_value_from_dataset(max_token=self.max_tokens)
 
 

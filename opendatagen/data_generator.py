@@ -200,19 +200,6 @@ class DataGenerator:
             note = ""
         
         rag_content = ""
-
-        if current_variable.source_localfile:
-            current_variable.load_local_file()
-        elif current_variable.source_localdirectory:
-            current_variable.load_local_directory()
-        elif current_variable.source_internet:
-            current_variable.load_internet_source()
-        elif current_variable.source_huggingface:
-            current_variable.load_huggingface_dataset()
-
-        if current_variable.rag_content:
-            rag_content = f"Here are some examples that might help you:\n\n{current_variable.rag_content}"
-
         last_values_list = []
         last_values = ""
 

@@ -61,6 +61,59 @@ class LlamaCPPModel(BaseModel):
         return output["choices"][0]["text"]
 
 
+
+class AnyscaleChatModel(BaseModel):
+
+    name:str = "mistralai/Mixtral-8x7B-Instruct-v0.1"
+    system_prompt:Optional[str] = "No verbose."
+    max_tokens:Optional[int] = 256
+    temperature:Optional[List[float]] = [1]
+    json_mode:Optional[bool] = False 
+    seed:Optional[int] = None 
+    tools:Optional[list] = None 
+    top_p:Optional[int] = 1 
+    stop:Optional[List[str]] = ["</s>", "[/INST]"] 
+    presence_penalty: Optional[float] = 0
+    frequency_penalty: Optional[float] = 0 
+    client:Optional[Type[OpenAI]] = None 
+    logprobs:Optional[bool] = False 
+    confidence_score:Optional[float] = None
+    
+    def __init__(self, **data):
+
+        super().__init__(**data)
+        self.client = OpenAI(api_key=os.getenv("ANYSCALE_API_KEY"), base_url='https://api.endpoints.anyscale.com/v1',)
+
+
+    @retry(retry=retry_if_result(is_retryable_answer), stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
+    def ask(self, messages) -> str:
+        
+        param = {
+
+            "model":self.name,
+            "temperature": random.choice(self.temperature),
+            "messages": messages
+
+        }
+
+        if self.stop:
+            param["stop"] = self.stop
+        
+        if self.max_tokens:
+            param["max_tokens"] = self.max_tokens
+
+        if self.json_mode:
+            param["response_format"] = {"type": "json_object"}
+
+        completion = self.client.chat.completions.create(**param)
+
+        if self.logprobs:
+            self.confidence_score = get_confidence_score(completion=completion)
+
+        answer = completion.choices[0].message.content
+        
+        return answer
+
 class TogetherChatModel(BaseModel):
 
     name:str = "mistralai/Mixtral-8x7B-Instruct-v0.1"
