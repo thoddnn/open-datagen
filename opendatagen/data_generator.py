@@ -13,7 +13,7 @@ from opendatagen.utils import dict_to_string, load_file, write_to_csv, generate_
 from opendatagen.utils import snake_case_to_title_case, title_case_to_snake_case
 from opendatagen.utils import extract_content_from_internet, clean_string
 from opendatagen.anonymizer import Anonymizer
-from opendatagen.model import OpenAIChatModel, OpenAIInstructModel, OpenAIEmbeddingModel, ModelName, MistralChatModel, LlamaCPPModel, TogetherChatModel
+from opendatagen.model import OpenAIChatModel, OpenAIInstructModel, OpenAIEmbeddingModel, ModelName, MistralChatModel, LlamaCPPModel, TogetherChatModel, AnyscaleChatModel
 from opendatagen.template import Template, Variable, Variations, create_variable_from_name
 from opendatagen.utils import function_to_call
 from mistralai.client import MistralClient
@@ -275,6 +275,13 @@ class DataGenerator:
                     {"role": "system", "content": current_model.system_prompt},
                     {"role": "user", "content": temp_variation_prompt},
                 ] 
+
+            elif isinstance(current_model, AnyscaleChatModel):
+            
+                start_messages = [
+                    {"role": "system", "content": current_model.system_prompt},
+                    {"role": "user", "content": temp_variation_prompt},
+                ]
                 
             else:
 

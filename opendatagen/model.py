@@ -69,6 +69,7 @@ class AnyscaleChatModel(BaseModel):
     max_tokens:Optional[int] = 256
     temperature:Optional[List[float]] = [1]
     json_mode:Optional[bool] = False 
+    json_schema:Optional[Dict] = None 
     seed:Optional[int] = None 
     tools:Optional[list] = None 
     top_p:Optional[int] = 1 
@@ -102,11 +103,11 @@ class AnyscaleChatModel(BaseModel):
         if self.max_tokens:
             param["max_tokens"] = self.max_tokens
 
-        if self.json_mode:
-            param["response_format"] = {"type": "json_object"}
+        if self.json_mode and self.json_schema:
+            param["response_format"] = {"type": "json_object", "schema": self.json_schema}
 
         completion = self.client.chat.completions.create(**param)
-
+        
         if self.logprobs:
             self.confidence_score = get_confidence_score(completion=completion)
 
@@ -443,6 +444,7 @@ class Model(BaseModel):
     llamacpp_instruct_model: Optional[LlamaCPPModel] = None 
     mistral_chat_model:Optional[MistralChatModel] = None
     together_chat_model:Optional[TogetherChatModel] = None  
+    anyscale_chat_model:Optional[AnyscaleChatModel] = None  
 
     def get_model(self):
         if self.openai_chat_model is not None:
@@ -457,6 +459,8 @@ class Model(BaseModel):
             return self.llamacpp_instruct_model
         elif self.together_chat_model is not None:
             return self.together_chat_model
+        elif self.anyscale_chat_model is not None:
+            return self.anyscale_chat_model
         else:
             return None
         
