@@ -261,6 +261,7 @@ class Variations(BaseModel):
     value:str
     confidence_score:Optional[float] = None  
     error_message:str = None
+    model_used:str = None
 
     class Config:
         extra = "forbid"  # This will raise an error for extra fields

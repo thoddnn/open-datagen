@@ -295,7 +295,7 @@ class DataGenerator:
 
                     if count > current_variable.validator.retry_number:
 
-                        new_value = Variations(id=variation_id, parent_id=parent_id, value=generated_value, error_message=new_message, confidence_score=current_confidence_score)
+                        new_value = Variations(id=variation_id, parent_id=parent_id, value=generated_value, error_message=new_message, confidence_score=current_confidence_score, model_used=current_model.name)
                         current_variable.values[variation_id] = new_value
                         break
                     
@@ -306,7 +306,7 @@ class DataGenerator:
                     else: 
                         current_confidence_score = {} 
 
-                    self.template.variables[variable_id_string].values[parent_id] = Variations(id=variation_id, parent_id=parent_id, value=generated_value, confidence_score=current_confidence_score)
+                    self.template.variables[variable_id_string].values[parent_id] = Variations(id=variation_id, parent_id=parent_id, value=generated_value, confidence_score=current_confidence_score, model_used=current_model.name)
                    
                     function_name = current_variable.validator.function_name
                     from_notebook = current_variable.validator.from_notebook
@@ -322,7 +322,7 @@ class DataGenerator:
 
                     if isValid:
 
-                        new_value = Variations(id=variation_id, parent_id=parent_id, value=generated_value)
+                        new_value = Variations(id=variation_id, parent_id=parent_id, value=generated_value, model_used=current_model.name)
 
                         current_variable.values[variation_id] = new_value
 
@@ -354,7 +354,7 @@ class DataGenerator:
 
                 generated_value = current_model.ask(messages=start_messages)
                 
-                new_value = Variations(id=variation_id, parent_id=parent_id, value=generated_value, confidence_score=current_model.confidence_score)
+                new_value = Variations(id=variation_id, parent_id=parent_id, value=generated_value, confidence_score=current_model.confidence_score, model_used=current_model.name)
                 current_variable.values[variation_id] = new_value
 
             last_values_list.append(generated_value)
@@ -442,8 +442,10 @@ class DataGenerator:
                     if prompt_variation.id:
                         parent_id = prompt_variation.parent_id
                     prompt_param[variable_id_string] = prompt_variation.value
+
                     prompt_param[f"error_message_{variable_id_string}"] = prompt_variation.error_message
                     prompt_param[f"confidence_{variable_id_string}"] = str(prompt_variation.confidence_score)
+                    prompt_param[f"model_used_{variable_id_string}"] = str(prompt_variation.model_used)
 
                 initial_prompt = prompt.format(**prompt_param)
 
@@ -470,6 +472,7 @@ class DataGenerator:
                             completion_param[variable_id_string] = variation.value
                             completion_param[f"error_message_{variable_id_string}"] = variation.error_message
                             completion_param[f"confidence_{variable_id_string}"] = str(variation.confidence_score)
+                            completion_param[f"model_used_{variable_id_string}"] = str(prompt_variation.model_used)
 
                         completion_result = completion.format(**completion_param)
 
@@ -497,6 +500,8 @@ class DataGenerator:
                     for variable_id_string, variation in param.items():
                         completion_param[variable_id_string] = variation.value
                         completion_param[f"error_message_{variable_id_string}"] = variation.error_message
+                        completion_param[f"confidence_{variable_id_string}"] = str(prompt_variation.confidence_score)
+                        completion_param[f"model_used_{variable_id_string}"] = str(prompt_variation.model_used)
 
                     completion_result = completion.format(**completion_param)
 
