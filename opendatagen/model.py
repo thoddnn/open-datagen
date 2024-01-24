@@ -346,6 +346,7 @@ class OpenAIChatModel(BaseModel):
         
         return answer
 
+
 class OpenAIEmbeddingModel(BaseModel):
 
     name:str = ""

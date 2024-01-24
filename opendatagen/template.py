@@ -267,7 +267,6 @@ class Variations(BaseModel):
         extra = "forbid"  # This will raise an error for extra fields
  
 
-
 class Variable(BaseModel):
 
     name: str

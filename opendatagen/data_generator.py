@@ -415,6 +415,7 @@ class DataGenerator:
 
         return error_str
 
+
     def generate_data(self, output_path):
 
         # Extracting structures and variables from the template
