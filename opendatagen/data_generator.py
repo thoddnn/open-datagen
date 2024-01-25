@@ -203,9 +203,24 @@ class DataGenerator:
         last_values_list = []
         last_values = ""
 
+        chosen_models = []
+
         for _ in range(generation_number):
 
-            current_model = random.choice(current_variable.models).get_model()
+            if current_variable.ensure_model_diversity:
+
+                available_models = [model.get_model() for model in current_variable.models if model.get_model() not in chosen_models]
+
+                if available_models:
+                    current_model = random.choice(available_models)
+                else:
+                    current_model = random.choice(current_variable.models).get_model()
+
+            else:
+                
+                current_model = random.choice(current_variable.models).get_model()
+
+            chosen_models.append(current_model)
 
             if isinstance(current_model, OpenAIInstructModel) or isinstance(current_model, LlamaCPPModel): 
                 if current_model.start_with:

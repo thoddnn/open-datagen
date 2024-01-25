@@ -34,6 +34,7 @@ class ModelName(Enum):
 class LlamaCPPModel(BaseModel):
 
     path:str
+    name:Optional[str] = None 
     temperature:Optional[List[float]] = [0.8]
     max_tokens:Optional[int] = 256
     top_p:Optional[float] = 0.95
@@ -59,6 +60,11 @@ class LlamaCPPModel(BaseModel):
         )
 
         return output["choices"][0]["text"]
+    
+    def __init__(self, **data):
+
+        super().__init__(**data)
+        self.name = self.path.split('/')[-1]
 
 
 

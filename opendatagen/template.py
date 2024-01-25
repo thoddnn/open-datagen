@@ -270,7 +270,8 @@ class Variations(BaseModel):
 class Variable(BaseModel):
 
     name: str
-    models:Optional[List[Model]] = None 
+    models:Optional[List[Model]] = None
+    ensure_model_diversity:Optional[bool] = False 
     generation_number: int = 1
     source_internet: Optional[RAGInternet] = None
     source_localfile: Optional[RAGLocalPath] = None
@@ -391,7 +392,7 @@ class TemplateManager:
         template = self.templates.get(template_name)
 
         if template:
-
+            
             template.load_internet_source()
             template.load_local_file()
             template.load_local_directory()
