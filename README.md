@@ -20,9 +20,9 @@ It offers improvements for:
 
 - Open-source model support + local inference
 
-- (SOON) Open DataGen Agent
+- Decontamination
 
-- (SOON) Web or Desktop app 🤔
+- (SOON) Order you high-quality dataset 
 
 ## Installation
 
@@ -126,9 +126,8 @@ if template:
     
     generator = DataGenerator(template=template)
     
-    data = generator.generate_data(output_path=output_path)
+    data, data_decontaminated = generator.generate_data(output_path=output_path, output_decontaminated_path=None)
     
-    print(data)
 ```
 
 Using this template you will: 

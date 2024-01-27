@@ -1,5 +1,5 @@
 from pydantic import BaseModel, validator, ValidationError, ConfigDict
-from typing import Optional, List, Dict, Union, Any 
+from typing import Optional, List, Dict, Union, Any , Callable
 from enum import Enum
 import os
 import json
@@ -11,12 +11,16 @@ import trafilatura
 from PyPDF2 import PdfReader
 import pandas as pd
 from datasets import load_dataset, Dataset
-from opendatagen.utils import get_first_n_tokens, num_tokens_from_string
+from opendatagen.utils import get_first_n_tokens, num_tokens_from_string, cosine_similarity
 import random
 import uuid
 import re 
 import pandas as pd
+import numpy as np 
 
+class DeleteMode(Enum):
+    HIGHEST = 'highest'
+    LOWEST = 'lowest'
 
 class RAGHuggingFace(BaseModel):
 
@@ -317,10 +321,51 @@ class Variable(BaseModel):
 
 class Decontomination(BaseModel):
 
-    embedding_model:Optional[EmbeddingModel] = None 
+    embedding_model:EmbeddingModel 
     threshold: Optional[float] = 0.99
-    exclude_string:Optional[List[str]] = None 
-    
+    column_name: str
+    delete_column: Optional[str] = None  # The column to consider for deletion criteria
+    delete_mode: Optional[DeleteMode] = DeleteMode.HIGHEST
+ 
+    def decontaminate(self, data: List[Dict]):
+
+        model = self.embedding_model.get_model()
+        
+        embeddings = [model.create_embedding(row[self.column_name]) for row in data]
+        embeddings_np = np.array(embeddings)
+
+        # Calculate cosine similarity matrix manually
+        sim_matrix = np.zeros((len(embeddings_np), len(embeddings_np)))
+
+        for i in range(len(embeddings_np)):
+            for j in range(len(embeddings_np)):
+                sim_matrix[i][j] = cosine_similarity(embeddings_np[i], embeddings_np[j])
+        
+        # Identify rows to keep (those that don't have too high similarity with any other row)
+        rows_to_keep = []
+        # Mark rows for exclusion based on similarity threshold
+        exclude_indices = set()
+
+        for i in range(len(data)):
+            for j in range(i + 1, len(data)):  # Compare each pair once
+                if sim_matrix[i][j] > self.threshold:
+                    # Mark the row with a lower value in delete_column for exclusion
+                    if self.delete_column:
+                        if self.delete_mode == DeleteMode.HIGHEST and data[i][self.delete_column] < data[j][self.delete_column]:
+                            exclude_indices.add(i)
+                        elif self.delete_mode == DeleteMode.LOWEST and data[i][self.delete_column] > data[j][self.delete_column]:
+                            exclude_indices.add(i)
+                        else:
+                            exclude_indices.add(j)
+                    else:
+                        # If no delete_column is specified, exclude one of the rows arbitrarily
+                        exclude_indices.add(j)
+
+        # Identify rows to keep (those not marked for exclusion)
+        rows_to_keep = [row for idx, row in enumerate(data) if idx not in exclude_indices]
+
+        return rows_to_keep
+
 
 class Template(BaseModel):
 
@@ -334,7 +379,7 @@ class Template(BaseModel):
     rag_content: Optional[str] = None
     value:Optional[List[str]] = None
     decontamination: Optional[Decontomination] = None 
-
+    
     class Config:
         extra = "forbid"  # This will raise an error for extra fields
 

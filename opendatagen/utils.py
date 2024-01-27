@@ -10,6 +10,7 @@ import tiktoken
 from datasets import Dataset
 import random
 import math 
+import numpy as np
 import openai
 
 def dict_to_string(d):
@@ -264,3 +265,12 @@ def clean_string(original_string:str):
     cleaned_string = re.sub(r'\n+', '\n\n', original_string).strip()
     
     return cleaned_string
+
+
+def cosine_similarity(vec1, vec2):
+
+    # Calculate the dot product of the vectors
+    dot_product = np.dot(vec1, vec2)
+    
+    return dot_product
+

@@ -431,7 +431,7 @@ class DataGenerator:
         return error_str
 
 
-    def generate_data(self, output_path):
+    def generate_data(self, output_path:str, output_decontaminated_path:str=None):
 
         # Extracting structures and variables from the template
         prompt = self.template.prompt
@@ -530,5 +530,13 @@ class DataGenerator:
 
                         write_to_csv(result, output_path)
 
+                
+        if self.template.decontamination:
 
-        return result
+            result_after_decontamination = self.template.decontamination.decontaminate(result)
+                
+            write_to_csv(result_after_decontamination, output_decontaminated_path)
+
+            return result, result_after_decontamination
+
+        return result, None 

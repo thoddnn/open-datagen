@@ -416,6 +416,7 @@ class OpenAIInstructModel(BaseModel):
 
 class OpenAIEmbeddingModel(BaseModel):
 
+    client:Optional[Type[OpenAI]] = None 
     name:str = "text-embedding-ada-002"
     
     def __init__(self, **data):
@@ -431,12 +432,12 @@ class OpenAIEmbeddingModel(BaseModel):
             input=prompt
         )
         
-        return embedding["data"][0]["embedding"]
+        return embedding.data[0].embedding
 
 class EmbeddingModel(BaseModel):
 
     openai_embedding_model:Optional[OpenAIEmbeddingModel] = None 
-
+    
     def get_model(self):
         if self.openai_embedding_model is not None:
             return self.openai_embedding_model
