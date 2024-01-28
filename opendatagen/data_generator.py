@@ -317,7 +317,7 @@ class DataGenerator:
                     generated_value = current_model.ask(messages=start_messages)
 
                     if isinstance(current_model, OpenAIChatModel):
-                        current_confidence_score = current_model.confidence_scores
+                        current_confidence_score = current_model.confidence_score
                     else: 
                         current_confidence_score = {} 
 
@@ -329,10 +329,12 @@ class DataGenerator:
 
                     param_dict = {}
 
-                    for param in additional_parameters:
+                    if additional_parameters:
 
-                        param_dict[param] = self.template.variables[param].values[parent_id]
-                        
+                        for param in additional_parameters:
+
+                            param_dict[param] = self.template.variables[param].values[parent_id]
+                                
                     isValid, new_message = function_to_call(function_name, from_notebook, param_dict)
 
                     if isValid:

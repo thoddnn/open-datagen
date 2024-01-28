@@ -30,22 +30,9 @@ venv/
 *.ipynb
 *.json
 
-!/opendatagen/examples/local-inference/*.csv
-!/opendatagen/examples/local-inference/*.ipynb
-!/opendatagen/examples/local-inference/template.json
-
-!/opendatagen/examples/never-seen-eval/factuality/*.csv
-!/opendatagen/examples/never-seen-eval/factuality/*.ipynb
-!/opendatagen/examples/never-seen-eval/factuality/template.json
-
-!/opendatagen/examples/retrieval/qa-eu-ai-act/*.csv
-!/opendatagen/examples/retrieval/qa-eu-ai-act/*.pdf
-!/opendatagen/examples/retrieval/qa-eu-ai-act/*.ipynb
-!/opendatagen/examples/retrieval/qa-eu-ai-act/template.json
-
-!/opendatagen/examples/opendata-eval/*.csv
-!/opendatagen/examples/opendata-eval/*.pdf
-!/opendatagen/examples/opendata-eval/*.ipynb
-!/opendatagen/examples/opendata-eval/template.json
+!/opendatagen/examples/embedding/*.csv
+!/opendatagen/examples/embedding/*.pdf
+!/opendatagen/examples/embedding/*.ipynb
+!/opendatagen/examples/embedding/template.json
 
 !/opendatagen/files/*.txt

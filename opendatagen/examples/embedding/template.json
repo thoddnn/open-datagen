@@ -1,0 +1,65 @@
+
+
+{
+    "humanrights": {
+        "description": "Universal Declaration of Human Rights",
+        "prompt": "Given the following text:\n'''\n{text_content}\n'''\n'''\n{question}\n'''\nHere are the most relevant sentences:\n'''\n{quotes}\n'''\n\nAnswer: {answer}",
+        "completion": "",
+        "prompt_variation_number": 0,
+        "variables": {
+            "text_content": {
+                "name": "Text content",
+                "generation_number": 1,
+                "get_value_from_localfile": {
+                    "localPath": "opendatagen/document.txt"
+                }
+            },
+            "question": {
+                "name": "Factually checkable question",
+                "generation_number": 40,
+                "models": [
+                    {
+                        "openai_chat_model": {
+                            "system_prompt": "Write a factually checkable question that can be answered shortly.",
+                            "name": "gpt-3.5-turbo-1106",
+                            "temperature": [1],
+                            "max_tokens": 32
+                        }
+                    }
+                ]
+            },
+            "quotes": {
+                "name": "Quotes",
+                "generation_number": 1,
+                "models": [
+                    {
+                        "openai_instruct_model": {
+                            "system_prompt": "Write quotes that will help you answer the question.",
+                            "name": "gpt-3.5-turbo-instruct",
+                            "temperature": [1],
+                            "start_with":["Here are the most relevant quotes: "],
+                            "max_tokens": 128
+                        }
+                    }
+                ]
+            },
+            "answer": {
+                "name": "Answer",
+                "generation_number": 1,
+                "ensure_model_diversity":true,
+                "models": [
+                    {
+                        "openai_chat_model": {
+                            "name": "gpt-3.5-turbo-1106",
+                            "system_prompt": "Answer consicely to the question.",
+                            "temperature": [0],
+                            "max_tokens": 128
+                        }
+                    }
+                ]
+            
+            }
+
+        }
+    }
+}
