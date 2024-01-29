@@ -271,62 +271,42 @@ class Variations(BaseModel):
         extra = "forbid"  # This will raise an error for extra fields
  
 
-class Variable(BaseModel):
-
-    name: str
-    models:Optional[List[Model]] = None
-    ensure_model_diversity:Optional[bool] = False 
-    generation_number: int = 1
-    source_internet: Optional[RAGInternet] = None
-    source_localfile: Optional[RAGLocalPath] = None
-    source_localdirectory: Optional[RAGLocalPath] = None
-    source_huggingface:Optional[RAGHuggingFace] = None
-    get_value_from_huggingface:Optional[RAGHuggingFace] = None
-    get_value_from_localfile:Optional[RAGLocalPath] = None
-    note: Optional[List[str]] = None
-    rag_content: Optional[str] = None
-    validator:Optional[Validator] = None
-    values:Optional[Dict[str, Variations]] = {}
-
-    model_config = ConfigDict(
-            protected_namespaces=('protect_me_', 'also_protect_'),
-            extra = "forbid"
-        )
-
-    def load_internet_source(self):
-
-        if self.source_internet is not None:
-            self.rag_content = self.source_internet.extract_content_from_internet()
-
-    def load_local_file(self):
-
-        if self.source_localfile is not None and self.source_localfile.localPath is not None:
-            self.rag_content = self.source_localfile.get_content_from_file()
-
-    def load_local_directory(self):
-
-        if self.source_localfile is not None and self.source_localfile.directoryPath is not None:
-            self.rag_content = self.source_localfile.get_content_from_directory()
-
-    def load_huggingface_dataset(self):
-
-        if self.source_huggingface is not None:
-            self.rag_content = self.source_huggingface.get_random_value_from_dataset()
-
-    def load_value(self):
-        
-        if self.get_value_from_huggingface:
-            self.value = self.get_value_from_huggingface.get_random_value_from_dataset(max_token=self.max_tokens)
-
-
 class Decontomination(BaseModel):
 
     embedding_model:EmbeddingModel 
     threshold: Optional[float] = 0.99
-    column_name: str
-    delete_column: Optional[str] = None  # The column to consider for deletion criteria
+    column_name: Optional[str] = None 
+    delete_column: Optional[str] = None 
     delete_mode: Optional[DeleteMode] = DeleteMode.HIGHEST
- 
+
+    def decontaminate_variable(self, variations:Dict[str, Variations]):
+        
+        model = self.embedding_model.get_model()
+
+        data: list[Variations] = list(variations.values())
+
+        embeddings = [model.create_embedding(row.value) for row in data]
+        embeddings_np = np.array(embeddings)
+    
+        sim_matrix = np.zeros((len(embeddings_np), len(embeddings_np)))
+
+        for i in range(len(embeddings_np)):
+            for j in range(len(embeddings_np)):
+                sim_matrix[i][j] = cosine_similarity(embeddings_np[i], embeddings_np[j])
+        
+        exclude_indices = set()
+
+        for i in range(len(data)):
+            for j in range(i + 1, len(data)):
+                if sim_matrix[i][j] > self.threshold:
+                    exclude_indices.add(j)
+
+        decontamined_variations = {key: variations[key] for i, key in enumerate(variations) if i not in exclude_indices}
+
+        return decontamined_variations
+
+
+
     def decontaminate(self, data: List[Dict]):
 
         model = self.embedding_model.get_model()
@@ -365,6 +345,62 @@ class Decontomination(BaseModel):
         rows_to_keep = [row for idx, row in enumerate(data) if idx not in exclude_indices]
 
         return rows_to_keep
+
+
+
+
+class Variable(BaseModel):
+
+    name: str
+    models:Optional[List[Model]] = None
+    ensure_model_diversity:Optional[bool] = False 
+    generation_number: int = 1
+    source_internet: Optional[RAGInternet] = None
+    source_localfile: Optional[RAGLocalPath] = None
+    source_localdirectory: Optional[RAGLocalPath] = None
+    source_huggingface:Optional[RAGHuggingFace] = None
+    get_value_from_huggingface:Optional[RAGHuggingFace] = None
+    get_value_from_localfile:Optional[RAGLocalPath] = None
+    get_value_from_custom_functions:Optional[Validator] = None
+    transform_value:Optional[Validator] = None 
+    note: Optional[List[str]] = None
+    rag_content: Optional[str] = None
+    validator:Optional[Validator] = None
+    decontamination:Optional[Decontomination] = None 
+    values:Optional[Dict[str, Variations]] = {}
+
+    model_config = ConfigDict(
+            protected_namespaces=('protect_me_', 'also_protect_'),
+            extra = "forbid"
+        )
+
+    def load_internet_source(self):
+
+        if self.source_internet is not None:
+            self.rag_content = self.source_internet.extract_content_from_internet()
+
+    def load_local_file(self):
+
+        if self.source_localfile is not None and self.source_localfile.localPath is not None:
+            self.rag_content = self.source_localfile.get_content_from_file()
+
+    def load_local_directory(self):
+
+        if self.source_localfile is not None and self.source_localfile.directoryPath is not None:
+            self.rag_content = self.source_localfile.get_content_from_directory()
+
+    def load_huggingface_dataset(self):
+
+        if self.source_huggingface is not None:
+            self.rag_content = self.source_huggingface.get_random_value_from_dataset()
+
+    def load_value(self):
+        
+        if self.get_value_from_huggingface:
+            self.value = self.get_value_from_huggingface.get_random_value_from_dataset(max_token=self.max_tokens)
+
+
+
 
 
 class Template(BaseModel):

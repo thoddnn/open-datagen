@@ -30,9 +30,4 @@ venv/
 *.ipynb
 *.json
 
-!/opendatagen/examples/embedding/*.csv
-!/opendatagen/examples/embedding/*.pdf
-!/opendatagen/examples/embedding/*.ipynb
-!/opendatagen/examples/embedding/template.json
-
 !/opendatagen/files/*.txt

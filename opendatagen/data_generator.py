@@ -109,6 +109,27 @@ class DataGenerator:
         
         # Return the list of all variation dictionaries generated
         return result
+    
+    def transform_generated_value(self, current_variable:Variable, value:str, parent_id):
+
+        function_name = current_variable.transform_value.function_name
+        from_notebook = current_variable.transform_value.from_notebook
+        additional_parameters = current_variable.transform_value.additional_parameters
+
+        param_dict = {}
+
+        if additional_parameters:
+            
+            for param in additional_parameters:
+                
+                param_dict[param] = self.template.variables[param].values[parent_id]
+
+        param_dict["value"] = value  
+
+        generated_value = function_to_call(function_name, from_notebook, param_dict)
+
+        return generated_value
+
 
     def generate_variable(self, prompt_text:str, current_variable:Variable, variable_id_string:str, completion_text:str=None, parent_id:str=None):
 
@@ -116,11 +137,67 @@ class DataGenerator:
 
         variations = {}
 
+        if current_variable.get_value_from_custom_functions:
+
+            for _ in range(generation_number):
+
+                function_name = current_variable.get_value_from_custom_functions.function_name
+                from_notebook = current_variable.get_value_from_custom_functions.from_notebook
+                additional_parameters = current_variable.get_value_from_custom_functions.additional_parameters
+
+                param_dict = {}
+
+                if additional_parameters:
+
+                    for param in additional_parameters:
+
+                        param_dict[param] = self.template.variables[param].values[parent_id]
+                            
+                generated_value = function_to_call(function_name, from_notebook, param_dict)
+
+                if current_variable.transform_value :
+                    generated_value = self.transform_generated_value(current_variable=current_variable, value=generated_value, parent_id=parent_id)
+
+                if parent_id:
+
+                    new_id = str(uuid.uuid4())
+
+                    new_value = Variations(id=new_id, parent_id=parent_id, value=generated_value)
+
+                    current_variable.values[new_id] = new_value
+
+                    self.template.variables[new_id]
+
+                    variations[new_id] = new_value
+
+                    self.template.variables[variable_id_string].values[new_id] = new_value
+
+                else:
+
+                    id_loop = str(uuid.uuid4())
+
+                    new_value = Variations(id=id_loop, parent_id=id_loop, value=generated_value)
+
+                    current_variable.values[id_loop] = new_value
+
+                    variations[id_loop] = new_value
+
+                    self.template.variables[variable_id_string].values[id_loop] = new_value
+
+            
+            if current_variable.decontamination:
+                variations = current_variable.decontamination.decontaminate_variable(variations)
+
+            return variations
+
         if current_variable.get_value_from_localfile:
 
             for _ in range(generation_number):
 
                 generated_value = current_variable.get_value_from_localfile.get_content_from_file()
+
+                if current_variable.transform_value :
+                    generated_value = self.transform_generated_value(current_variable=current_variable, value=generated_value, parent_id=parent_id)
 
                 if parent_id:
 
@@ -156,6 +233,9 @@ class DataGenerator:
             for _ in range(generation_number):
 
                 generated_value = current_variable.get_value_from_huggingface.get_random_value_from_dataset()
+
+                if current_variable.transform_value :
+                    generated_value = self.transform_generated_value(current_variable=current_variable, value=generated_value, parent_id=parent_id)
 
                 if parent_id:
 
@@ -370,7 +450,10 @@ class DataGenerator:
             else:
 
                 generated_value = current_model.ask(messages=start_messages)
-                
+
+                if current_variable.transform_value :
+                    generated_value = self.transform_generated_value(current_variable=current_variable, value=generated_value, parent_id=parent_id)
+
                 new_value = Variations(id=variation_id, parent_id=parent_id, value=generated_value, confidence_score=current_model.confidence_score, model_used=current_model.name)
                 current_variable.values[variation_id] = new_value
 

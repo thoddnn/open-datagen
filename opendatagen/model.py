@@ -302,7 +302,7 @@ class OpenAIChatModel(BaseModel):
     frequency_penalty: Optional[float] = 0 
     client:Optional[Type[OpenAI]] = None 
     logprobs:Optional[bool] = False 
-    confidence_score:Optional[float] = None 
+    confidence_score:Optional[float] = None
     
     def __init__(self, **data):
         super().__init__(**data)

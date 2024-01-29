@@ -12,6 +12,7 @@ import random
 import math 
 import numpy as np
 import openai
+import inspect 
 
 def dict_to_string(d):
     result = []
@@ -224,7 +225,15 @@ def function_to_call(function_name, from_notebook, *args):
 
     user_function = load_user_function(function_name, from_notebook)
 
-    return user_function(*args)
+    sig = inspect.signature(user_function)
+
+    params = sig.parameters
+    
+    if params:
+        return user_function(*args)
+    else:
+        return user_function()
+
 
 def is_retryable_answer(result):
     if "i can't fulfill that request" in result.lower():
