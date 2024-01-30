@@ -4,7 +4,8 @@ from enum import Enum
 import os
 import json
 from opendatagen.utils import load_file
-from opendatagen.model import OpenAIChatModel, OpenAIInstructModel, OpenAIEmbeddingModel, HuggingFaceModel, Model, EmbeddingModel
+from opendatagen.model import OpenAIChatModel, OpenAIInstructModel, LlamaCPPModel, Model, EmbeddingModel, MistralChatModel, AnyscaleChatModel, TogetherChatModel, TogetherInstructModel
+from mistralai.models.chat_completion import ChatMessage
 from urllib.parse import quote_plus
 import requests
 import trafilatura
@@ -347,6 +348,65 @@ class Decontomination(BaseModel):
         return rows_to_keep
 
 
+class Junction(BaseModel):
+
+    value:Optional[str] = None 
+    model:Optional[Model] = None 
+    delete_branch:Optional[bool] = False 
+
+    class Config:
+        extra = "forbid"
+    
+    def generate(self, data:List[str]):
+
+        current_model = self.model.get_model()
+
+        prompt = "Given this following values:"
+    
+        for val in data:
+            prompt += f"\n'''\n{val}\n'''\n"
+
+        if isinstance(current_model, OpenAIInstructModel) or isinstance(current_model, LlamaCPPModel):
+
+            start_messages = prompt
+        
+        elif isinstance(current_model, OpenAIChatModel):
+
+            start_messages = [
+                {"role": "system", "content": current_model.system_prompt},
+                {"role": "user", "content": prompt},
+            ]   
+            
+        elif isinstance(current_model, MistralChatModel):
+
+            start_messages = [
+                ChatMessage(role="system", content= current_model.system_prompt),
+                ChatMessage(role="user", content=prompt)
+            ]
+
+        elif isinstance(current_model, TogetherChatModel):
+        
+            start_messages = [
+                {"role": "system", "content": current_model.system_prompt},
+                {"role": "user", "content": prompt},
+            ] 
+
+        elif isinstance(current_model, AnyscaleChatModel):
+        
+            start_messages = [
+                {"role": "system", "content": current_model.system_prompt},
+                {"role": "user", "content": prompt},
+            ]
+            
+        else:
+
+            raise ValueError("Unknow type of model")
+
+        generated_value = current_model.ask(messages=start_messages)
+
+        self.value = generated_value
+
+        return generated_value
 
 
 class Variable(BaseModel):
@@ -368,6 +428,7 @@ class Variable(BaseModel):
     validator:Optional[Validator] = None
     decontamination:Optional[Decontomination] = None 
     values:Optional[Dict[str, Variations]] = {}
+    junction:Optional[Junction] = None 
 
     model_config = ConfigDict(
             protected_namespaces=('protect_me_', 'also_protect_'),
@@ -417,7 +478,7 @@ class Template(BaseModel):
     decontamination: Optional[Decontomination] = None 
     
     class Config:
-        extra = "forbid"  # This will raise an error for extra fields
+        extra = "forbid"  
 
     def load_internet_source(self):
 

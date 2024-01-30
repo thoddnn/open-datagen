@@ -92,6 +92,25 @@ class DataGenerator:
         
 
         
+        if variable.junction:
+
+            data:List[str] = [variable.value for variable in variations.values()]
+            junction_value = variable.junction.generate(data=data)
+
+            for key, old_value in variations.items():
+
+                temp_value = variations[key]
+                temp_value.value = junction_value
+                variations[key] = temp_value
+
+            if variable.junction.delete_branch:
+
+                last_key, last_value = list(variations.items())[-1]
+                variations.clear()
+                variations[last_key] = last_value
+            
+            variations[key] = temp_value
+        
         for id, variation in variations.items():
             # Update the current variations dictionary with the new variation
             updated_variation_dict = current_variation_dict.copy()
@@ -349,7 +368,7 @@ class DataGenerator:
             temp_variation_prompt = clean_string(temp_variation_prompt)
 
             if isinstance(current_model, OpenAIInstructModel) or isinstance(current_model, LlamaCPPModel):
-
+                
                 start_messages = temp_variation_prompt
             
             elif isinstance(current_model, OpenAIChatModel):

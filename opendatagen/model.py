@@ -10,7 +10,6 @@ from pydantic import BaseModel, validator, ValidationError, ConfigDict, Extra
 from typing import Optional, List, Dict, Union, Type
 import random 
 from mistralai.client import MistralClient
-from mistralai.models.chat_completion import ChatMessage
 import math 
 import tiktoken
 from llama_cpp import Llama
