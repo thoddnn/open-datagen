@@ -89,7 +89,9 @@ class DataGenerator:
                                                        current_variable=variable,
                                                        variable_id_string=next_var,
                                                        parent_id=parent_id)
+        
 
+        
         for id, variation in variations.items():
             # Update the current variations dictionary with the new variation
             updated_variation_dict = current_variation_dict.copy()

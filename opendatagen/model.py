@@ -6,7 +6,7 @@ import os
 import json
 from opendatagen.utils import is_retryable_answer
 import requests
-from pydantic import BaseModel, validator, ValidationError, ConfigDict
+from pydantic import BaseModel, validator, ValidationError, ConfigDict, Extra
 from typing import Optional, List, Dict, Union, Type
 import random 
 from mistralai.client import MistralClient
@@ -66,6 +66,9 @@ class LlamaCPPModel(BaseModel):
         super().__init__(**data)
         self.name = self.path.split('/')[-1]
 
+    class Config:
+        extra = 'forbid'
+
 
 
 class AnyscaleChatModel(BaseModel):
@@ -90,6 +93,9 @@ class AnyscaleChatModel(BaseModel):
 
         super().__init__(**data)
         self.client = OpenAI(api_key=os.getenv("ANYSCALE_API_KEY"), base_url='https://api.endpoints.anyscale.com/v1',)
+
+    class Config:
+        extra = 'forbid'
 
 
     @retry(retry=retry_if_result(is_retryable_answer), stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
@@ -143,6 +149,9 @@ class TogetherChatModel(BaseModel):
         super().__init__(**data)
         self.client = OpenAI(api_key=os.getenv("TOGETHER_API_KEY"), base_url='https://api.together.xyz',)
 
+    class Config:
+        extra = 'forbid'
+
 
     @retry(retry=retry_if_result(is_retryable_answer), stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
     def ask(self, messages) -> str:
@@ -194,6 +203,9 @@ class TogetherInstructModel(BaseModel):
         super().__init__(**data)
         self.client = OpenAI(api_key=os.getenv("TOGETHER_API_KEY"), base_url='https://api.together.xyz',)
 
+    class Config:
+        extra = 'forbid'
+
     
     @retry(stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
     def ask(self, messages:str) -> str:
@@ -242,6 +254,9 @@ class MistralChatModel(BaseModel):
         super().__init__(**data)
         api_key = os.environ["MISTRAL_API_KEY"]
         self.client = MistralClient(api_key=api_key)
+
+    class Config:
+        extra = 'forbid'
     
     @retry(stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
     def ask(self, messages) -> str:
@@ -286,6 +301,9 @@ class HuggingFaceModel(BaseModel):
         response = requests.post(API_URL, headers=headers, json=prompt)
 
         return response.json()
+    
+    class Config:
+        extra = 'forbid'
 
 class OpenAIChatModel(BaseModel):
 
@@ -309,6 +327,9 @@ class OpenAIChatModel(BaseModel):
         
         self.client = OpenAI()
         self.client.api_key = os.getenv("OPENAI_API_KEY")
+
+    class Config:
+        extra = 'forbid'
 
    
     @retry(retry=retry_if_result(is_retryable_answer), stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
@@ -353,10 +374,6 @@ class OpenAIChatModel(BaseModel):
         return answer
 
 
-class OpenAIEmbeddingModel(BaseModel):
-
-    name:str = ""
-
 class OpenAIInstructModel(BaseModel):
 
     name:str = "gpt-3.5-turbo-instruct"
@@ -372,6 +389,9 @@ class OpenAIInstructModel(BaseModel):
     frequency_penalty: Optional[float] = 0 
     client:Optional[Type[OpenAI]] = None 
     confidence_score:Optional[float] = None
+
+    class Config:
+        extra = 'forbid'
 
     def __init__(self, **data):
         super().__init__(**data)
@@ -418,6 +438,9 @@ class OpenAIEmbeddingModel(BaseModel):
 
     client:Optional[Type[OpenAI]] = None 
     name:str = "text-embedding-ada-002"
+
+    class Config:
+        extra = 'forbid'
     
     def __init__(self, **data):
         super().__init__(**data)
