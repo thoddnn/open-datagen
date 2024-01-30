@@ -22,7 +22,9 @@ It offers improvements for:
 
 - Decontamination
 
-- (SOON) Order you high-quality dataset 
+- Tree of thought (using the junction parameters)
+
+- (SOON) No code dataset generation
 
 ## Installation
 
