@@ -35,6 +35,8 @@ class LlamaCPPModel(BaseModel):
     path:str
     name:Optional[str] = None 
     temperature:Optional[List[float]] = [0.8]
+    use_gpu:Optional[bool] = False 
+    stop:Optional[List[str]] = None  
     max_tokens:Optional[int] = 256
     top_p:Optional[float] = 0.95
     min_p:Optional[float] = 0.05
@@ -44,19 +46,47 @@ class LlamaCPPModel(BaseModel):
 
     def ask(self, messages:str) -> str:
 
-        llm = Llama(model_path=self.path, verbose=False)
+        param_llm = {
+            "verbose": False
+        }
 
+        if self.use_gpu:
+            param_llm["n_gpu_layers"] = -1
+
+        #llm = Llama(model_path=self.path, verbose=False, n_gpu_layers=-1)
+        llm = Llama(model_path=self.path, **param_llm)
+        
         if self.start_with:
             starter = random.choice(self.start_with)
         else:
             starter = ""
 
+        param_completion = {
+            "prompt": f"{messages}\n{starter}",
+            "max_tokens": self.max_tokens,
+            "echo": self.echo,
+            "temperature": random.choice(self.temperature)
+        }
+
+        if self.stop: 
+            param_completion["stop"] = self.stop
+
+        if self.top_p:
+            param_completion["top_p"] = self.top_p
+
+        if self.min_p:
+            param_completion["min_p"] = self.min_p
+
+        '''
         output = llm(
             prompt=f"{messages}\n{starter}", 
             max_tokens=self.max_tokens, 
             echo=self.echo,
             temperature=random.choice(self.temperature),
         )
+        '''
+
+        output = llm(**param_completion)
 
         return output["choices"][0]["text"]
     

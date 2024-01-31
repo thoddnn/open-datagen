@@ -22,7 +22,7 @@ It offers improvements for:
 
 - Decontamination
 
-- Tree of thought (using the junction parameters)
+- Tree of thought (using the junction parameter)
 
 - (SOON) No code dataset generation
 
@@ -39,7 +39,6 @@ export OPENAI_API_KEY='your_openai_api_key' #(using openai>=1.2)
 export MISTRAL_API_KEY='your_mistral_api_key'
 export TOGETHER_API_KEY='your_together_api_key'
 export ANYSCALE_API_KEY='your_anyscale_api_key'
-export HUGGINGFACE_API_KEY='your_huggingface_api_key'
 export SERPLY_API_KEY='your_serply_api_key' #Google Search API 
 ```
 

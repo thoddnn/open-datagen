@@ -248,7 +248,6 @@ class DataGenerator:
 
             return variations
         
-
         if current_variable.get_value_from_huggingface:
 
             for _ in range(generation_number):
@@ -322,7 +321,7 @@ class DataGenerator:
                 current_model = random.choice(current_variable.models).get_model()
 
             chosen_models.append(current_model)
-
+            
             if isinstance(current_model, OpenAIInstructModel) or isinstance(current_model, LlamaCPPModel): 
                 if current_model.start_with:
                     start_with = random.choice(current_model.start_with)
@@ -479,12 +478,12 @@ class DataGenerator:
                 current_variable.values[variation_id] = new_value
 
             last_values_list.append(generated_value)
-
-            # Create the desired string format if last_values_list is not empty
-            if last_values_list:
-                last_values = "You must generate a content value that is not similar to following values:\n'''" + "\n".join(last_values_list) + "\n'''"
-            else:
-                last_values = ""
+            
+            if current_variable.independent_values == False:
+                if last_values_list:
+                    last_values = "You must generate a content value that is not similar to following values:\n'''" + "\n".join(last_values_list) + "\n'''"
+                else:
+                    last_values = ""
             
             variations[variation_id] = new_value
 

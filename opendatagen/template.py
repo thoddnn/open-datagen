@@ -413,6 +413,7 @@ class Variable(BaseModel):
 
     name: str
     models:Optional[List[Model]] = None
+    independent_values:Optional[bool] = False 
     ensure_model_diversity:Optional[bool] = False 
     generation_number: int = 1
     source_internet: Optional[RAGInternet] = None
@@ -465,7 +466,8 @@ class Variable(BaseModel):
 
 
 class Template(BaseModel):
-
+    
+    name:str
     description: str
     prompt: str
     completion: str
