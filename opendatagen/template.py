@@ -23,6 +23,69 @@ class DeleteMode(Enum):
     HIGHEST = 'highest'
     LOWEST = 'lowest'
 
+
+class DelimiterSplitter(BaseModel):
+
+    delimiter:str = "\n"
+
+    class Config:
+        extra = "forbid"
+
+    def perform_chunk(self, text:str) -> List[str]:
+
+        chunks = text.split(self.delimiter)
+        
+        # Strip leading and trailing whitespaces from each chunk and filter out empty chunks
+        non_empty_chunks = [chunk.strip() for chunk in chunks if chunk.strip() != '']
+
+        return non_empty_chunks
+
+class CharacterSplitter(BaseModel):
+
+    chunk_size:Optional[int] = None
+    chunk_overlap:Optional[int] = None  
+    cut_within_sentence:Optional[bool] = True 
+
+    class Config:
+        extra = "forbid"
+
+    def perform_chunk(self, text: str) -> List[str]:
+
+        # Validate the input parameters
+        if not self.chunk_size or self.chunk_size <= 0:
+            raise ValueError("Chunk size must be a positive integer")
+        if self.chunk_overlap is not None and (self.chunk_overlap < 0 or self.chunk_overlap >= self.chunk_size):
+            raise ValueError("Chunk overlap must be non-negative and less than chunk size")
+        
+        # Initialize variables
+        chunks = []
+        start_index = 0
+
+        # Calculate the actual chunk size considering the overlap
+        actual_chunk_size = self.chunk_size
+        if self.chunk_overlap:
+            actual_chunk_size -= self.chunk_overlap
+
+        # Generate the chunks
+        while start_index < len(text):
+            # Determine the end index of the current chunk
+            end_index = start_index + self.chunk_size
+            if not self.cut_within_sentence:
+                # Find the last sentence end before reaching the chunk size limit
+                sentence_end_index = text.rfind('. ', start_index, end_index)
+                if sentence_end_index != -1 and sentence_end_index - start_index > actual_chunk_size // 2:
+                    # Only cut at the sentence end if the chunk is at least half the size of the actual_chunk_size
+                    end_index = sentence_end_index + 1
+
+            chunk = text[start_index:end_index]
+            chunks.append(chunk)
+
+            # Move the start index for the next chunk
+            start_index += actual_chunk_size
+
+        return chunks
+
+
 class RAGHuggingFace(BaseModel):
 
     dataset_path:str
@@ -36,10 +99,10 @@ class RAGHuggingFace(BaseModel):
     subset_size:Optional[int] = 10000
     subset:Optional[List[str]] = None   
     dst:Optional[Any] = None 
+    chunking:Optional[Union[CharacterSplitter, DelimiterSplitter]] = None 
 
     class Config:
         extra = "forbid"
-    
 
     def get_random_value_from_dataset(self):
 
@@ -88,7 +151,7 @@ class RAGHuggingFace(BaseModel):
 
                     text = self.subset[index]
 
-                    result = get_first_n_tokens(n=self.max_tokens, text=text, encoding_name="cl100k_base")
+                    result = get_first_n_tokens(n=self.max_tokens, text=text, encoding_name="cl100k_base", cut_last_sentence=False)
                     
                     return result
 
@@ -263,6 +326,7 @@ class Variations(BaseModel):
 
     id:str
     parent_id:Optional[str] = None
+    initial_value:Optional[str] = None 
     value:str
     confidence_score:Optional[float] = None  
     error_message:str = None
@@ -408,6 +472,13 @@ class Junction(BaseModel):
 
         return generated_value
 
+class RAGVariable(BaseModel):
+
+    variable_name:str = None
+    get_initial_value:Optional[bool] = True 
+    
+    class Config:
+        extra = "forbid"  
 
 class Variable(BaseModel):
 
@@ -416,6 +487,7 @@ class Variable(BaseModel):
     independent_values:Optional[bool] = False 
     ensure_model_diversity:Optional[bool] = False 
     generation_number: int = 1
+    source_variable:Optional[RAGVariable] = None 
     source_internet: Optional[RAGInternet] = None
     source_localfile: Optional[RAGLocalPath] = None
     source_localdirectory: Optional[RAGLocalPath] = None
@@ -526,7 +598,7 @@ class TemplateManager:
         for key, data in raw_data.items():
             
             template_name = key
-            template = Template(**data)
+            template =Template(**data)
             templates[template_name] = template
             
         return templates

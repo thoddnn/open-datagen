@@ -36,6 +36,7 @@ class LlamaCPPModel(BaseModel):
     name:Optional[str] = None 
     temperature:Optional[List[float]] = [0.8]
     use_gpu:Optional[bool] = False 
+    handle_prompt_format:Optional[bool] = False 
     stop:Optional[List[str]] = None  
     max_tokens:Optional[int] = 256
     top_p:Optional[float] = 0.95
@@ -106,6 +107,7 @@ class AnyscaleChatModel(BaseModel):
     system_prompt:Optional[str] = "No verbose."
     max_tokens:Optional[int] = 256
     temperature:Optional[List[float]] = [1]
+    handle_prompt_format:Optional[bool] = False 
     json_mode:Optional[bool] = False 
     json_schema:Optional[Dict] = None 
     seed:Optional[int] = None 
@@ -216,6 +218,7 @@ class TogetherInstructModel(BaseModel):
     name:str = "mistralai/Mixtral-8x7B-Instruct-v0.1"
     max_tokens:Optional[int] = 256
     temperature:Optional[List[float]] = [1]
+    handle_prompt_format:Optional[bool] = False 
     messages:Optional[str] = None 
     seed:Optional[int] = None 
     tools:Optional[List[str]] = None 

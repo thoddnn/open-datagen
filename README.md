@@ -24,7 +24,9 @@ It offers improvements for:
 
 - Tree of thought (using the junction parameter)
 
-- (SOON) No code dataset generation
+- (SOON) No-code dataset generation
+
+- (SOON) Multimodality
 
 ## Installation
 

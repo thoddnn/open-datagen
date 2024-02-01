@@ -234,13 +234,11 @@ def function_to_call(function_name, from_notebook, *args):
     else:
         return user_function()
 
-
 def is_retryable_answer(result):
     if "i can't fulfill that request" in result.lower():
         return True
     else:
         return False
-
 
 def num_tokens_from_string(string: str, encoding_name: str) -> int:
     """Returns the number of tokens in a text string."""
@@ -283,3 +281,33 @@ def cosine_similarity(vec1, vec2):
     
     return dot_product
 
+
+def get_prompt_prefix_and_stop_words(model_name:str):
+
+    if "teknium" in model_name.lower().strip():
+
+        start_prompt = "<|im_start|>"
+        end_prompt = "" 
+        stop_words = ["<|im_end|>","<|im_start|>"]
+
+    elif "nousresearch" in model_name.lower().strip():
+
+        start_prompt = "" 
+        end_prompt = "" 
+        stop_words = ["<|im_end|>","<|im_start|>"]
+
+    elif "mistral" in model_name.lower().strip():
+
+        start_prompt = "[INST]" 
+        end_prompt = "[/INST]"
+        stop_words = ["[/INST]", "</s>"]
+
+        return "[INST]", ["<|im_end|>","<|im_start|>"]
+    
+    else:
+
+        start_prompt = "" 
+        end_prompt = ""
+        stop_words = [""]
+
+    return start_prompt, end_prompt, stop_words

@@ -46,8 +46,6 @@ class DataGenerator:
 
         return result
     
-
-
     def anonymize_text(self, text_to_anonymize):
 
         # Example usage:
@@ -150,6 +148,37 @@ class DataGenerator:
         generated_value = function_to_call(function_name, from_notebook, param_dict)
 
         return generated_value
+    
+#    def get_value(self, parent_id:str, variable_id_string:str, variable_name:str, param_value:str="value"):
+ 
+
+    def add_variation_value(self, variations:dict, variable_id_string:str, current_variable:Variable, generated_value:str, initial_value:str=None, parent_id:str=None):
+
+        if parent_id:
+
+            new_id = str(uuid.uuid4())
+
+            new_value = Variations(id=new_id, parent_id=parent_id, value=generated_value, initial_value=initial_value)
+
+            current_variable.values[new_id] = new_value
+
+            self.template.variables[new_id]
+
+            variations[new_id] = new_value
+
+            self.template.variables[variable_id_string].values[new_id] = new_value
+
+        else:
+
+            id_loop = str(uuid.uuid4())
+
+            new_value = Variations(id=id_loop, parent_id=id_loop, value=generated_value, initial_value=initial_value)
+
+            current_variable.values[id_loop] = new_value
+
+            variations[id_loop] = new_value
+
+            self.template.variables[variable_id_string].values[id_loop] = new_value
 
 
     def generate_variable(self, prompt_text:str, current_variable:Variable, variable_id_string:str, completion_text:str=None, parent_id:str=None):
@@ -179,31 +208,29 @@ class DataGenerator:
                 if current_variable.transform_value :
                     generated_value = self.transform_generated_value(current_variable=current_variable, value=generated_value, parent_id=parent_id)
 
-                if parent_id:
+                if current_variable.get_value_from_custom_functions.chunking:
 
-                    new_id = str(uuid.uuid4())
+                    chunks = current_variable.get_value_from_huggingface.chunking.perform_chunk(text=generated_value)
 
-                    new_value = Variations(id=new_id, parent_id=parent_id, value=generated_value)
+                    for chunk in chunks: 
+                        
+                        #add values to variations 
+                        self.add_variation_value(variations=variations, 
+                                                 variable_id_string=variable_id_string, 
+                                                 current_variable=current_variable, 
+                                                 generated_value=chunk,
+                                                 initial_value=generated_value,
+                                                 parent_id=parent_id)
+                        
+                else: 
 
-                    current_variable.values[new_id] = new_value
-
-                    self.template.variables[new_id]
-
-                    variations[new_id] = new_value
-
-                    self.template.variables[variable_id_string].values[new_id] = new_value
-
-                else:
-
-                    id_loop = str(uuid.uuid4())
-
-                    new_value = Variations(id=id_loop, parent_id=id_loop, value=generated_value)
-
-                    current_variable.values[id_loop] = new_value
-
-                    variations[id_loop] = new_value
-
-                    self.template.variables[variable_id_string].values[id_loop] = new_value
+                    #add values to variations 
+                    self.add_variation_value(variations=variations, 
+                                                 variable_id_string=variable_id_string, 
+                                                 current_variable=current_variable, 
+                                                 generated_value=chunk,
+                                                 initial_value=generated_value,
+                                                 parent_id=parent_id)
 
             
             if current_variable.decontamination:
@@ -220,68 +247,69 @@ class DataGenerator:
                 if current_variable.transform_value :
                     generated_value = self.transform_generated_value(current_variable=current_variable, value=generated_value, parent_id=parent_id)
 
-                if parent_id:
+                if current_variable.get_value_from_huggingface.chunking:
+                    chunks = current_variable.get_value_from_huggingface.chunking.perform_chunk(text=generated_value)
 
-                    new_id = str(uuid.uuid4())
+                    for chunk in chunks: 
+                        
+                        #add values to variations 
+                        self.add_variation_value(variations=variations, 
+                                                 variable_id_string=variable_id_string, 
+                                                 current_variable=current_variable, 
+                                                 generated_value=chunk,
+                                                 initial_value=generated_value,
+                                                 parent_id=parent_id)
+                        
+                else: 
 
-                    new_value = Variations(id=new_id, parent_id=parent_id, value=generated_value)
-
-                    current_variable.values[new_id] = new_value
-
-                    self.template.variables[new_id]
-
-                    variations[new_id] = new_value
-
-                    self.template.variables[variable_id_string].values[new_id] = new_value
-
-                else:
-
-                    id_loop = str(uuid.uuid4())
-
-                    new_value = Variations(id=id_loop, parent_id=id_loop, value=generated_value)
-
-                    current_variable.values[id_loop] = new_value
-
-                    variations[id_loop] = new_value
-
-                    self.template.variables[variable_id_string].values[id_loop] = new_value
-
+                    #add values to variations 
+                    self.add_variation_value(variations=variations, 
+                                                 variable_id_string=variable_id_string, 
+                                                 current_variable=current_variable, 
+                                                 generated_value=chunk,
+                                                 initial_value=generated_value,
+                                                 parent_id=parent_id)
+                    
+                
+            if current_variable.decontamination:
+                variations = current_variable.decontamination.decontaminate_variable(variations)
+                    
             return variations
         
         if current_variable.get_value_from_huggingface:
 
             for _ in range(generation_number):
-
+                
                 generated_value = current_variable.get_value_from_huggingface.get_random_value_from_dataset()
 
                 if current_variable.transform_value :
                     generated_value = self.transform_generated_value(current_variable=current_variable, value=generated_value, parent_id=parent_id)
 
-                if parent_id:
+                if current_variable.get_value_from_huggingface.chunking:
+                    chunks = current_variable.get_value_from_huggingface.chunking.perform_chunk(text=generated_value)
 
-                    new_id = str(uuid.uuid4())
+                    for chunk in chunks: 
+                        
+                        #add values to variations 
+                        self.add_variation_value(variations=variations, 
+                                                 variable_id_string=variable_id_string, 
+                                                 current_variable=current_variable, 
+                                                 generated_value=chunk,
+                                                 initial_value=generated_value,
+                                                 parent_id=parent_id)
+                        
+                else: 
 
-                    new_value = Variations(id=new_id, parent_id=parent_id, value=generated_value)
+                    #add values to variations 
+                    self.add_variation_value(variations=variations, 
+                                                 variable_id_string=variable_id_string, 
+                                                 current_variable=current_variable, 
+                                                 generated_value=chunk,
+                                                 initial_value=generated_value,
+                                                 parent_id=parent_id)
 
-                    current_variable.values[new_id] = new_value
-
-                    self.template.variables[new_id]
-
-                    variations[new_id] = new_value
-
-                    self.template.variables[variable_id_string].values[new_id] = new_value
-
-                else:
-
-                    id_loop = str(uuid.uuid4())
-
-                    new_value = Variations(id=id_loop, parent_id=id_loop, value=generated_value)
-
-                    current_variable.values[id_loop] = new_value
-
-                    variations[id_loop] = new_value
-
-                    self.template.variables[variable_id_string].values[id_loop] = new_value
+            if current_variable.decontamination:
+                variations = current_variable.decontamination.decontaminate_variable(variations)
 
             return variations
 
