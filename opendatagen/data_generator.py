@@ -149,8 +149,6 @@ class DataGenerator:
 
         return generated_value
     
-#    def get_value(self, parent_id:str, variable_id_string:str, variable_name:str, param_value:str="value"):
- 
 
     def add_variation_value(self, variations:dict, variable_id_string:str, current_variable:Variable, generated_value:str, initial_value:str=None, parent_id:str=None):
 
@@ -179,6 +177,30 @@ class DataGenerator:
             variations[id_loop] = new_value
 
             self.template.variables[variable_id_string].values[id_loop] = new_value
+
+    def retrieve_value(self, target_key, current_variable_name, parent_id, get_initial_value):
+        
+        # Get keys in reverse order
+        keys_in_reverse = list(self.template.variables.keys())[::-1]
+        
+        # Find the starting index
+        start_index = keys_in_reverse.index(current_variable_name) + 1 if current_variable_name in keys_in_reverse else len(keys_in_reverse)
+
+        def find_value(current_id, keys):
+            for key in keys:
+                value = self.template.variables[key].values[current_id]
+                if value.id == current_id:
+                    if key == target_key:
+                        if get_initial_value:
+                            return value.initial_value
+                        else:
+                            return value.value 
+                    return find_value(value.parent_id, keys[start_index:])
+            return None
+
+        # Start the lookup process from the key that comes before the current_variable_name
+        return find_value(parent_id, keys_in_reverse[start_index:])
+
 
 
     def generate_variable(self, prompt_text:str, current_variable:Variable, variable_id_string:str, completion_text:str=None, parent_id:str=None):
@@ -366,9 +388,15 @@ class DataGenerator:
                 current_variable.load_internet_source()
             elif current_variable.source_huggingface:
                 current_variable.load_huggingface_dataset()
+            elif current_variable.source_variable:
+                current_variable.rag_content = self.retrieve_value(target_key=current_variable.source_variable.variable_name, 
+                                                                   current_variable_name=variable_id_string, 
+                                                                   parent_id=parent_id,
+                                                                   get_initial_value=current_variable.source_variable.get_initial_value)
+
 
             if current_variable.rag_content:
-                rag_content = f"Here are some examples that might help you:\n\n{current_variable.rag_content}"
+                rag_content = f"Here is some context that will help you:\n'''{current_variable.rag_content}\n'''"
 
             variation_id = str(uuid.uuid4())
 
@@ -393,7 +421,7 @@ class DataGenerator:
                                                         context=prompt_text)
             
             temp_variation_prompt = clean_string(temp_variation_prompt)
-
+            
             if isinstance(current_model, OpenAIInstructModel) or isinstance(current_model, LlamaCPPModel):
                 
                 start_messages = temp_variation_prompt
