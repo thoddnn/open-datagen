@@ -326,7 +326,7 @@ class DataGenerator:
                     self.add_variation_value(variations=variations, 
                                                  variable_id_string=variable_id_string, 
                                                  current_variable=current_variable, 
-                                                 generated_value=chunk,
+                                                 generated_value=generated_value,
                                                  initial_value=generated_value,
                                                  parent_id=parent_id)
 
@@ -354,7 +354,7 @@ class DataGenerator:
         last_values = ""
 
         chosen_models = []
-
+        
         for _ in range(generation_number):
 
             if current_variable.ensure_model_diversity:

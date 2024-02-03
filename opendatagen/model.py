@@ -112,7 +112,7 @@ class AnyscaleChatModel(BaseModel):
     json_schema:Optional[Dict] = None 
     seed:Optional[int] = None 
     tools:Optional[list] = None 
-    top_p:Optional[int] = 1 
+    top_p:Optional[float] = 1 
     stop:Optional[List[str]] = ["</s>", "[/INST]"] 
     presence_penalty: Optional[float] = 0
     frequency_penalty: Optional[float] = 0 
@@ -142,6 +142,9 @@ class AnyscaleChatModel(BaseModel):
 
         if self.stop:
             param["stop"] = self.stop
+
+        if self.top_p:
+            param["top_p"] = self.top_p
         
         if self.max_tokens:
             param["max_tokens"] = self.max_tokens
@@ -167,7 +170,7 @@ class TogetherChatModel(BaseModel):
     json_mode:Optional[bool] = False 
     seed:Optional[int] = None 
     tools:Optional[list] = None 
-    top_p:Optional[int] = 1 
+    top_p:Optional[float] = 1 
     stop:Optional[List[str]] = ["</s>", "[/INST]"] 
     presence_penalty: Optional[float] = 0
     frequency_penalty: Optional[float] = 0 
@@ -198,6 +201,9 @@ class TogetherChatModel(BaseModel):
         if self.stop:
             param["stop"] = self.stop
         
+        if self.top_p:
+            param["top_p"] = self.top_p
+        
         if self.max_tokens:
             param["max_tokens"] = self.max_tokens
 
@@ -223,7 +229,7 @@ class TogetherInstructModel(BaseModel):
     seed:Optional[int] = None 
     tools:Optional[List[str]] = None 
     start_with:Optional[List[str]] = None
-    top_p:Optional[int] = 1 
+    top_p:Optional[float] = 1 
     stop:Optional[List[str]] = None 
     presence_penalty: Optional[float] = 0
     frequency_penalty: Optional[float] = 0 
@@ -257,6 +263,9 @@ class TogetherInstructModel(BaseModel):
 
         if self.stop:
             param["stop"] = self.stop
+
+        if self.top_p:
+            param["top_p"] = self.top_p
         
         if self.max_tokens:
             param["max_tokens"] = self.max_tokens
@@ -276,7 +285,7 @@ class MistralChatModel(BaseModel):
     temperature:Optional[List[float]] = [0.7]
     system_prompt:Optional[str] = None 
     random_seed:Optional[int] = None 
-    top_p:Optional[int] = 1 
+    top_p:Optional[float] = 1 
     safe_mode:Optional[bool] = False 
     client:Optional[Type[MistralClient]] = None 
     confidence_score:Optional[float] = None 
@@ -346,7 +355,7 @@ class OpenAIChatModel(BaseModel):
     json_mode:Optional[bool] = False 
     seed:Optional[int] = None 
     tools:Optional[list] = None 
-    top_p:Optional[int] = 1 
+    top_p:Optional[float] = 1 
     stop:Optional[List[str]] = None 
     presence_penalty: Optional[float] = 0
     frequency_penalty: Optional[float] = 0 
@@ -378,6 +387,9 @@ class OpenAIChatModel(BaseModel):
 
         if self.stop:
             param["stop"] = self.stop
+
+        if self.top_p:
+            param["top_p"] = self.top_p
         
         if self.tools:
             param["functions"] = self.tools
@@ -415,7 +427,7 @@ class OpenAIInstructModel(BaseModel):
     seed:Optional[int] = None 
     tools:Optional[List[str]] = None 
     start_with:Optional[List[str]] = None
-    top_p:Optional[int] = 1 
+    top_p:Optional[float] = 1 
     stop:Optional[List[str]] = None 
     presence_penalty: Optional[float] = 0
     frequency_penalty: Optional[float] = 0 
@@ -449,6 +461,9 @@ class OpenAIInstructModel(BaseModel):
 
         if self.stop:
             param["stop"] = self.stop
+
+        if self.top_p:
+            param["top_p"] = self.top_p
 
         if self.tools:
             param["functions"] = self.tools
