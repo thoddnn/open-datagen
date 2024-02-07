@@ -65,7 +65,7 @@ if template:
     
 ```
 
-where **faq_wikipedia.json** is [here](opendatagen/examples/faq_wikipedia.json)
+where faq_wikipedia.json is [here](opendatagen/examples/faq_wikipedia.json)
 
 ## Contribution
 
