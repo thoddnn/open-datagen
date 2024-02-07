@@ -13,6 +13,8 @@ import math
 import numpy as np
 import openai
 import inspect 
+from typing import List, Optional
+from pydantic import BaseModel
 
 def dict_to_string(d):
     result = []
@@ -96,6 +98,13 @@ def create_type_message(comp_type, min_value, max_value):
     return type_msg
 
 def find_strings_in_brackets(text):
+    # This pattern matches text enclosed in { and }
+    pattern = r"\{(.*?)\}"
+    # Find all matches
+    matches = re.findall(pattern, text)
+    return matches
+
+def extract_variable_info(text):
     # This pattern matches text enclosed in { and }
     pattern = r"\{(.*?)\}"
     # Find all matches
@@ -311,3 +320,12 @@ def get_prompt_prefix_and_stop_words(model_name:str):
         stop_words = [""]
 
     return start_prompt, end_prompt, stop_words
+
+def pydantic_list_to_dict(lst: List[BaseModel], fields: Optional[List[str]] = None) -> List[dict]:
+    if fields:
+        # If fields are specified, only include those fields in the output
+        return [{field: item.model_dump().get(field) for field in fields} for item in lst]
+    else:   
+        # Otherwise, include the entire object
+        return [item.model_dump() for item in lst]
+

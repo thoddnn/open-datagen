@@ -7,6 +7,5 @@ Here are the requirements:
 1. Try not to repeat the verb for each sub-topic to maximize diversity.
 2. The language used for the generated prompt also should be diverse.
 3. The type of prompt should be diverse.
-4. The prompt should be in English.
-5. The prompt should be 1 to 2 sentences long.
-6. Answer as a valid JSON like {{"prompts": ["XXXX", "AAAA"]}}
+4. The prompt should be 1 to 2 sentences long.
+5. Answer as a valid JSON like {{"prompts": ["XXXX", "AAAA"]}}

@@ -4,7 +4,7 @@ from enum import Enum
 import os
 import json
 from opendatagen.utils import load_file
-from opendatagen.model import OpenAIChatModel, OpenAIInstructModel, LlamaCPPModel, Model, EmbeddingModel, MistralChatModel, AnyscaleChatModel, TogetherChatModel, TogetherInstructModel
+from opendatagen.model import OpenAIChatModel, OpenAIInstructModel, LlamaCPPModel, Model, EmbeddingModel, MistralChatModel, AnyscaleChatModel, TogetherChatModel, TogetherInstructModel, UserMessage
 from mistralai.models.chat_completion import ChatMessage
 from urllib.parse import quote_plus
 import requests
@@ -12,7 +12,7 @@ import trafilatura
 from PyPDF2 import PdfReader
 import pandas as pd
 from datasets import load_dataset, Dataset
-from opendatagen.utils import get_first_n_tokens, num_tokens_from_string, cosine_similarity
+from opendatagen.utils import get_first_n_tokens, num_tokens_from_string, cosine_similarity, find_strings_in_brackets
 import random
 import uuid
 import re 
@@ -328,6 +328,7 @@ class Variations(BaseModel):
     parent_id:Optional[str] = None
     initial_value:Optional[str] = None 
     value:str
+    path:Optional[str] = None 
     confidence_score:Optional[float] = None  
     error_message:str = None
     model_used:str = None
@@ -369,7 +370,6 @@ class Decontomination(BaseModel):
         decontamined_variations = {key: variations[key] for i, key in enumerate(variations) if i not in exclude_indices}
 
         return decontamined_variations
-
 
 
     def decontaminate(self, data: List[Dict]):
@@ -415,9 +415,9 @@ class Decontomination(BaseModel):
 class Junction(BaseModel):
 
     value:Optional[str] = None 
-    model:Optional[Model] = None 
+    model:Model = None 
     delete_branch:Optional[bool] = False 
-
+    
     class Config:
         extra = "forbid"
     
@@ -425,48 +425,24 @@ class Junction(BaseModel):
 
         current_model = self.model.get_model()
 
-        prompt = "Given this following values:"
+        prompt = ""
     
         for val in data:
             prompt += f"\n'''\n{val}\n'''\n"
 
-        if isinstance(current_model, OpenAIInstructModel) or isinstance(current_model, LlamaCPPModel):
+        if isinstance(current_model.user_prompt, list):
 
-            start_messages = prompt
-        
-        elif isinstance(current_model, OpenAIChatModel):
+            current_model.user_prompt.append(UserMessage(role="user", content=prompt))
 
-            start_messages = [
-                {"role": "system", "content": current_model.system_prompt},
-                {"role": "user", "content": prompt},
-            ]   
-            
-        elif isinstance(current_model, MistralChatModel):
+        elif isinstance(current_model.user_prompt, str):
 
-            start_messages = [
-                ChatMessage(role="system", content= current_model.system_prompt),
-                ChatMessage(role="user", content=prompt)
-            ]
+            current_model.user_prompt = f"{current_model.user_prompt}\n\nAssistant:{prompt}"
 
-        elif isinstance(current_model, TogetherChatModel):
-        
-            start_messages = [
-                {"role": "system", "content": current_model.system_prompt},
-                {"role": "user", "content": prompt},
-            ] 
-
-        elif isinstance(current_model, AnyscaleChatModel):
-        
-            start_messages = [
-                {"role": "system", "content": current_model.system_prompt},
-                {"role": "user", "content": prompt},
-            ]
-            
         else:
 
-            raise ValueError("Unknow type of model")
+            raise ValueError("Error")
 
-        generated_value = current_model.ask(messages=start_messages)
+        generated_value = current_model.ask()
 
         self.value = generated_value
 
@@ -507,6 +483,9 @@ class Variable(BaseModel):
             protected_namespaces=('protect_me_', 'also_protect_'),
             extra = "forbid"
         )
+    
+    
+
 
     def load_internet_source(self):
 
@@ -534,15 +513,11 @@ class Variable(BaseModel):
             self.value = self.get_value_from_huggingface.get_random_value_from_dataset(max_token=self.max_tokens)
 
 
-
-
-
 class Template(BaseModel):
     
     name:str
     description: str
     prompt: str
-    completion: str
     prompt_variation_number: Optional[int] = 1
     variables: Optional[Dict[str, Variable]] = None
     source_internet: Optional[RAGInternet] = None

@@ -4,17 +4,44 @@ from openai import OpenAI
 import numpy as np
 import os
 import json
-from opendatagen.utils import is_retryable_answer
+from opendatagen.utils import is_retryable_answer, pydantic_list_to_dict
 import requests
 from pydantic import BaseModel, validator, ValidationError, ConfigDict, Extra
 from typing import Optional, List, Dict, Union, Type
 import random 
-from mistralai.client import MistralClient
+from mistralai.client import MistralClient, ChatMessage
 import math 
 import tiktoken
 from llama_cpp import Llama
 
 N_RETRIES = 2
+
+class UserMessage(BaseModel):
+
+    role:str
+    content:str 
+    rephraser:Optional['Rephraser'] = None 
+    
+    class Config:
+        extra = 'forbid'
+
+
+class EvolMethod(Enum):
+
+    deep = "deepening.txt"
+    concretizing = "concretizing.txt"
+    step_reasoning = "step_reasoning.txt"
+    breath = "breath.txt"
+    basic = "basic.txt"
+
+class Rephraser(BaseModel):
+
+    type_of_rephrasing:EvolMethod = EvolMethod.basic
+    values:List[str]
+
+    class Config:
+        extra = 'forbid'
+
 
 class ModelName(Enum):
     GPT_35_TURBO_INSTRUCT = "gpt-3.5-turbo-instruct"
@@ -34,6 +61,7 @@ class LlamaCPPModel(BaseModel):
 
     path:str
     name:Optional[str] = None 
+    user_prompt:Optional[str] = None 
     temperature:Optional[List[float]] = [0.8]
     use_gpu:Optional[bool] = False 
     handle_prompt_format:Optional[bool] = False 
@@ -45,7 +73,7 @@ class LlamaCPPModel(BaseModel):
     start_with:Optional[List[str]] = None
     confidence_score:Optional[float] = None
 
-    def ask(self, messages:str) -> str:
+    def ask(self) -> str:
 
         param_llm = {
             "verbose": False
@@ -57,13 +85,8 @@ class LlamaCPPModel(BaseModel):
         #llm = Llama(model_path=self.path, verbose=False, n_gpu_layers=-1)
         llm = Llama(model_path=self.path, **param_llm)
         
-        if self.start_with:
-            starter = random.choice(self.start_with)
-        else:
-            starter = ""
-
         param_completion = {
-            "prompt": f"{messages}\n{starter}",
+            "prompt": f"{self.user_prompt}",
             "max_tokens": self.max_tokens,
             "echo": self.echo,
             "temperature": random.choice(self.temperature)
@@ -77,15 +100,6 @@ class LlamaCPPModel(BaseModel):
 
         if self.min_p:
             param_completion["min_p"] = self.min_p
-
-        '''
-        output = llm(
-            prompt=f"{messages}\n{starter}", 
-            max_tokens=self.max_tokens, 
-            echo=self.echo,
-            temperature=random.choice(self.temperature),
-        )
-        '''
 
         output = llm(**param_completion)
 
@@ -104,7 +118,7 @@ class LlamaCPPModel(BaseModel):
 class AnyscaleChatModel(BaseModel):
 
     name:str = "mistralai/Mixtral-8x7B-Instruct-v0.1"
-    system_prompt:Optional[str] = "No verbose."
+    user_prompt:Optional[List[UserMessage]] = None 
     max_tokens:Optional[int] = 256
     temperature:Optional[List[float]] = [1]
     handle_prompt_format:Optional[bool] = False 
@@ -130,8 +144,10 @@ class AnyscaleChatModel(BaseModel):
 
 
     @retry(retry=retry_if_result(is_retryable_answer), stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
-    def ask(self, messages) -> str:
+    def ask(self) -> str:
         
+        messages = pydantic_list_to_dict(lst = self.user_prompt, fields=['role', 'content']) 
+
         param = {
 
             "model":self.name,
@@ -164,7 +180,7 @@ class AnyscaleChatModel(BaseModel):
 class TogetherChatModel(BaseModel):
 
     name:str = "mistralai/Mixtral-8x7B-Instruct-v0.1"
-    system_prompt:Optional[str] = "No verbose."
+    user_prompt:Optional[List[UserMessage]] = None 
     max_tokens:Optional[int] = 256
     temperature:Optional[List[float]] = [1]
     json_mode:Optional[bool] = False 
@@ -188,7 +204,9 @@ class TogetherChatModel(BaseModel):
 
 
     @retry(retry=retry_if_result(is_retryable_answer), stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
-    def ask(self, messages) -> str:
+    def ask(self) -> str:
+
+        messages = pydantic_list_to_dict(lst = self.user_prompt, fields=['role', 'content']) 
         
         param = {
 
@@ -225,7 +243,7 @@ class TogetherInstructModel(BaseModel):
     max_tokens:Optional[int] = 256
     temperature:Optional[List[float]] = [1]
     handle_prompt_format:Optional[bool] = False 
-    messages:Optional[str] = None 
+    user_prompt:Optional[str] = None 
     seed:Optional[int] = None 
     tools:Optional[List[str]] = None 
     start_with:Optional[List[str]] = None
@@ -246,18 +264,13 @@ class TogetherInstructModel(BaseModel):
 
     
     @retry(stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
-    def ask(self, messages:str) -> str:
-
-        if self.start_with:
-            starter = random.choice(self.start_with)
-        else:
-            starter = ""
+    def ask(self) -> str:
 
         param = {
 
             "model":self.name,
             "temperature": random.choice(self.temperature),
-            "prompt": f"{messages}\n\n{starter}"
+            "prompt": f"{self.user_prompt}"
 
         }
 
@@ -283,13 +296,13 @@ class MistralChatModel(BaseModel):
     name:str = "mistral-tiny"
     max_tokens:Optional[int] = 256
     temperature:Optional[List[float]] = [0.7]
-    system_prompt:Optional[str] = None 
+    user_prompt:Optional[List[UserMessage]] = None
     random_seed:Optional[int] = None 
     top_p:Optional[float] = 1 
     safe_mode:Optional[bool] = False 
     client:Optional[Type[MistralClient]] = None 
     confidence_score:Optional[float] = None 
-
+    
     def __init__(self, **data):
         
         super().__init__(**data)
@@ -300,8 +313,10 @@ class MistralChatModel(BaseModel):
         extra = 'forbid'
     
     @retry(stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
-    def ask(self, messages) -> str:
-                             
+    def ask(self) -> str:
+
+        messages = [ChatMessage(role=msg.role, content=msg.content) for msg in self.user_prompt]
+                         
         param = {
 
             "model":self.name,
@@ -326,36 +341,17 @@ class MistralChatModel(BaseModel):
         return answer
 
 
-class HuggingFaceModel(BaseModel):
-
-    model_name:str
-
-    def __init__(self, **data):
-        super().__init__(**data)
-
-        self.api_token = os.getenv("HUGGINGFACE_API_KEY")
-        
-    def ask(self, prompt:str):
-
-        headers = {"Authorization": f"Bearer {self.api_token}"}
-        API_URL = f"https://api-inference.huggingface.co/models/{self.model_name}"
-        response = requests.post(API_URL, headers=headers, json=prompt)
-
-        return response.json()
-    
-    class Config:
-        extra = 'forbid'
-
 class OpenAIChatModel(BaseModel):
 
     name:str = "gpt-3.5-turbo-1106"
-    system_prompt:Optional[str] = "No verbose."
+    user_prompt:Optional[List[UserMessage]] = None 
     max_tokens:Optional[int] = 256
     temperature:Optional[List[float]] = [1]
     json_mode:Optional[bool] = False 
     seed:Optional[int] = None 
     tools:Optional[list] = None 
     top_p:Optional[float] = 1 
+    note:Optional[List[str]] = None 
     stop:Optional[List[str]] = None 
     presence_penalty: Optional[float] = 0
     frequency_penalty: Optional[float] = 0 
@@ -372,10 +368,12 @@ class OpenAIChatModel(BaseModel):
     class Config:
         extra = 'forbid'
 
-   
+    
     @retry(retry=retry_if_result(is_retryable_answer), stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
-    def ask(self, messages) -> str:
-        
+    def ask(self) -> str:
+
+        messages = pydantic_list_to_dict(lst = self.user_prompt, fields=['role', 'content']) 
+
         param = {
 
             "model":self.name,
@@ -405,7 +403,7 @@ class OpenAIChatModel(BaseModel):
 
         if self.seed:
             param["seed"] = self.seed
-
+        
         completion = self.client.chat.completions.create(**param)
 
         if self.logprobs:
@@ -413,8 +411,6 @@ class OpenAIChatModel(BaseModel):
 
         answer = completion.choices[0].message.content
 
-
-        
         return answer
 
 
@@ -423,7 +419,7 @@ class OpenAIInstructModel(BaseModel):
     name:str = "gpt-3.5-turbo-instruct"
     max_tokens:Optional[int] = 256
     temperature:Optional[List[float]] = [1]
-    messages:Optional[str] = None 
+    user_prompt:Optional[str] = None 
     seed:Optional[int] = None 
     tools:Optional[List[str]] = None 
     start_with:Optional[List[str]] = None
@@ -444,18 +440,13 @@ class OpenAIInstructModel(BaseModel):
         self.client.api_key = os.getenv("OPENAI_API_KEY")
         
     @retry(stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
-    def ask(self, messages:str) -> str:
-
-        if self.start_with:
-            starter = random.choice(self.start_with)
-        else:
-            starter = ""
+    def ask(self) -> str:
 
         param = {
-
+            
             "model":self.name,
             "temperature": random.choice(self.temperature),
-            "prompt": f"{messages}\n\n{starter}"
+            "prompt": f"{self.user_prompt}"
 
         }
 
@@ -517,20 +508,17 @@ class EmbeddingModel(BaseModel):
 class Model(BaseModel):
 
     openai_chat_model: Optional[OpenAIChatModel] = None 
-    huggingface_model:Optional[HuggingFaceModel] = None 
     openai_instruct_model: Optional[OpenAIInstructModel] = None 
     llamacpp_instruct_model: Optional[LlamaCPPModel] = None 
     mistral_chat_model:Optional[MistralChatModel] = None
     together_chat_model:Optional[TogetherChatModel] = None  
     anyscale_chat_model:Optional[AnyscaleChatModel] = None  
-
+    
     def get_model(self):
         if self.openai_chat_model is not None:
             return self.openai_chat_model
         elif self.openai_instruct_model is not None:
             return self.openai_instruct_model
-        elif self.huggingface_model is not None:
-            return self.huggingface_model
         elif self.mistral_chat_model is not None:
             return self.mistral_chat_model
         elif self.llamacpp_instruct_model is not None:
@@ -541,7 +529,8 @@ class Model(BaseModel):
             return self.anyscale_chat_model
         else:
             return None
-        
+    
+ 
 
 
 def convert_openailogprobs_to_dict(completion):
@@ -579,9 +568,9 @@ def extract_keyword_from_text(text:str):
         {"role":"user", "content":user_prompt}
     ]
 
-    model = OpenAIChatModel(system_prompt=system_prompt, user_prompt=user_prompt, temperature=[0], json_mode=True) 
+    model = OpenAIChatModel(user_prompt=messages, temperature=[0], json_mode=True) 
 
-    answer = model.ask(messages)
+    answer = model.ask()
 
     return answer 
 

@@ -10,15 +10,16 @@ from urllib.parse import quote
 from re import findall
 from typing import Dict, List, Union
 from opendatagen.utils import dict_to_string, load_file, write_to_csv, generate_context_from_json, extract_website_details, create_type_message, find_strings_in_brackets
-from opendatagen.utils import snake_case_to_title_case, title_case_to_snake_case
+from opendatagen.utils import snake_case_to_title_case, title_case_to_snake_case, pydantic_list_to_dict
 from opendatagen.utils import extract_content_from_internet, clean_string
 from opendatagen.anonymizer import Anonymizer
-from opendatagen.model import OpenAIChatModel, OpenAIInstructModel, OpenAIEmbeddingModel, ModelName, MistralChatModel, LlamaCPPModel, TogetherChatModel, AnyscaleChatModel
+from opendatagen.model import OpenAIChatModel, OpenAIInstructModel, OpenAIEmbeddingModel, ModelName, MistralChatModel, LlamaCPPModel, TogetherChatModel, AnyscaleChatModel, UserMessage
 from opendatagen.template import Template, Variable, Variations, create_variable_from_name
 from opendatagen.utils import function_to_call
 from mistralai.client import MistralClient
 from mistralai.models.chat_completion import ChatMessage
 import uuid
+import copy 
 
 load_dotenv()
 
@@ -114,7 +115,7 @@ class DataGenerator:
             updated_variation_dict = current_variation_dict.copy()
 
             updated_variation_dict[next_var] = variation
-
+            
             # Recursively process the remaining variables
             # and extend the all_variation_dicts list with the results
             result.extend(self.contextual_generation(
@@ -150,17 +151,18 @@ class DataGenerator:
         return generated_value
     
 
-    def add_variation_value(self, variations:dict, variable_id_string:str, current_variable:Variable, generated_value:str, initial_value:str=None, parent_id:str=None):
+    def add_variation_value(self, variations:dict, variable_id_string:str, current_variable:Variable, generated_value:str, initial_value:str=None, parent_id:str=None, id:str=None):
 
         if parent_id:
 
-            new_id = str(uuid.uuid4())
+            if id:
+                new_id = id
+            else:
+                new_id = str(uuid.uuid4())
 
             new_value = Variations(id=new_id, parent_id=parent_id, value=generated_value, initial_value=initial_value)
 
             current_variable.values[new_id] = new_value
-
-            self.template.variables[new_id]
 
             variations[new_id] = new_value
 
@@ -168,7 +170,10 @@ class DataGenerator:
 
         else:
 
-            id_loop = str(uuid.uuid4())
+            if id:
+                id_loop = id
+            else:
+                id_loop = str(uuid.uuid4())
 
             new_value = Variations(id=id_loop, parent_id=id_loop, value=generated_value, initial_value=initial_value)
 
@@ -178,6 +183,10 @@ class DataGenerator:
 
             self.template.variables[variable_id_string].values[id_loop] = new_value
 
+
+
+
+                
     def retrieve_value(self, target_key, current_variable_name, parent_id, get_initial_value):
         
         # Get keys in reverse order
@@ -204,7 +213,7 @@ class DataGenerator:
 
 
     def generate_variable(self, prompt_text:str, current_variable:Variable, variable_id_string:str, completion_text:str=None, parent_id:str=None):
-
+        
         generation_number = current_variable.generation_number
 
         variations = {}
@@ -323,7 +332,7 @@ class DataGenerator:
                 else: 
 
                     #add values to variations 
-                    self.add_variation_value(variations=variations, 
+                    self.add_variation_value( variations=variations, 
                                                  variable_id_string=variable_id_string, 
                                                  current_variable=current_variable, 
                                                  generated_value=generated_value,
@@ -334,27 +343,22 @@ class DataGenerator:
                 variations = current_variable.decontamination.decontaminate_variable(variations)
 
             return variations
-
-        if completion_text:
-            initial_variation_prompt = load_file(path="files/completion.txt")
-        else:
-            initial_variation_prompt = load_file(path="files/generation.txt")
-
-        temp_variation_prompt = initial_variation_prompt
-
-        name = current_variable.name
-
-        if current_variable.note:
-            note = random.choice(current_variable.note)
-        else:
-            note = ""
         
         rag_content = ""
-        last_values_list = []
-        last_values = ""
-
         chosen_models = []
-        
+        independent_messages = None 
+
+        current_variable = self.template.variables[variable_id_string]
+
+        if current_variable.source_localfile:
+            current_variable.load_local_file()
+        elif current_variable.source_localdirectory:
+            current_variable.load_local_directory()
+        elif current_variable.source_internet:
+            current_variable.load_internet_source()
+        elif current_variable.source_huggingface:
+            current_variable.load_huggingface_dataset()
+
         for _ in range(generation_number):
 
             if current_variable.ensure_model_diversity:
@@ -362,7 +366,7 @@ class DataGenerator:
                 available_models = [model.get_model() for model in current_variable.models if model.get_model() not in chosen_models]
 
                 if available_models:
-                    current_model = random.choice(available_models)
+                    current_model = random.choice(available_models) 
                 else:
                     current_model = random.choice(current_variable.models).get_model()
 
@@ -371,92 +375,104 @@ class DataGenerator:
                 current_model = random.choice(current_variable.models).get_model()
 
             chosen_models.append(current_model)
+
+            #Get the variables value in user_prompt from the model object 
+            if isinstance(current_model.user_prompt, list):
+
+                initial_messages = pydantic_list_to_dict(lst=current_model.user_prompt, fields=['role', 'content'])
+                copy_messages = copy.deepcopy(initial_messages)
+                copy_messages_obj = copy.deepcopy(current_model.user_prompt)
+                    
+                for message in current_model.user_prompt:
+                    variables_to_get = find_strings_in_brackets(text=message.content)
+
+                    if len(variables_to_get) > 0:
+                        
+                        temp = {}
+                        replace_dict = {}
+
+                        for target_variable_name in variables_to_get:
+                            
+                            #Manage .value and .initial_value
+                            split_result = target_variable_name.split(".")
+                            target_name = split_result[0]
+
+                            replace_dict[target_variable_name] = target_name
+
+                            try:
+                                get_initial_value = split_result[1]
+                                if get_initial_value.lower() == "value":
+                                    get_initial_value = False 
+                                else:
+                                    get_initial_value = True 
+
+                            except IndexError:
+
+                                get_initial_value = False  
+
+                            value = self.retrieve_value(target_key=target_name,
+                                                        current_variable_name=variable_id_string,
+                                                        parent_id=parent_id,
+                                                        get_initial_value=get_initial_value)
+
+                            temp[target_name] = value
+
+                        for old, new in replace_dict.items():
+                            message.content = message.content.replace(old, new)
+
+                        message.content = message.content.format(**temp)
+                
+                if current_variable.rag_content:
+
+                    rag_content = f"Here is some context that will help you:\n'''{current_variable.rag_content}\n'''"
+                    current_model.user_prompt.append(UserMessage(role="user", content=rag_content))
+                
+            elif isinstance(current_model.user_prompt, str):
+                
+                copy_messages_obj = copy.deepcopy(current_model.user_prompt)
+
+                variables_to_get = find_strings_in_brackets(text=current_model.user_prompt)
+                
+                if len(variables_to_get) > 0:
+                    
+                    temp = {}
+
+                    for target_variable_name in variables_to_get:
+                        
+                        value = self.retrieve_value(target_key=target_variable_name,
+                                                    current_variable_name=variable_id_string,
+                                                    parent_id=parent_id,
+                                                    get_initial_value=True)
+                        
+                        temp[target_variable_name] = value
+
+                    current_model.user_prompt = current_model.user_prompt.format(**temp)
+                
+                if current_variable.rag_content:
+                    
+                    rag_content = f"Here is some context that will help you:\n'''{current_variable.rag_content}\n'''"
+                    current_model.user_prompt.append(UserMessage(role="user", content=rag_content))
+
+            else: 
+                
+                raise ValueError("User prompt is badly formatted")
             
-            if isinstance(current_model, OpenAIInstructModel) or isinstance(current_model, LlamaCPPModel): 
-                if current_model.start_with:
-                    start_with = random.choice(current_model.start_with)
-                else:
-                    start_with = ""
-            else:
-                start_with = ""
-
-            if current_variable.source_localfile:
-                current_variable.load_local_file()
-            elif current_variable.source_localdirectory:
-                current_variable.load_local_directory()
-            elif current_variable.source_internet:
-                current_variable.load_internet_source()
-            elif current_variable.source_huggingface:
-                current_variable.load_huggingface_dataset()
-            elif current_variable.source_variable:
-                current_variable.rag_content = self.retrieve_value(target_key=current_variable.source_variable.variable_name, 
-                                                                   current_variable_name=variable_id_string, 
-                                                                   parent_id=parent_id,
-                                                                   get_initial_value=current_variable.source_variable.get_initial_value)
-
-
-            if current_variable.rag_content:
-                rag_content = f"Here is some context that will help you:\n'''{current_variable.rag_content}\n'''"
 
             variation_id = str(uuid.uuid4())
-
-            if completion_text:
-                
-                temp_variation_prompt = initial_variation_prompt.format(prompt=prompt_text,
-                                                                            variable_name=name,
-                                                                            completion_type="",
-                                                                            completion=completion_text,
-                                                                            start_with=start_with,
-                                                                            last_values=last_values,
-                                                                            rag_content=rag_content,
-                                                                            note=note)
-            else:
-                
-                temp_variation_prompt = initial_variation_prompt.format(
-                                                        variable_name=variable_id_string,
-                                                        rag_content=rag_content,
-                                                        start_with=start_with,
-                                                        last_values=last_values,
-                                                        note=note,
-                                                        context=prompt_text)
             
-            temp_variation_prompt = clean_string(temp_variation_prompt)
-            
-            if isinstance(current_model, OpenAIInstructModel) or isinstance(current_model, LlamaCPPModel):
+            if current_variable.transform_value :
+                generated_value = self.transform_generated_value(current_variable=current_variable, value=generated_value, parent_id=parent_id)
+
+                new_value = Variations(id=variation_id,
+                                       parent_id=parent_id,
+                                       value=generated_value,
+                                       initial_value=generated_value,
+                                       confidence_score=current_model.confidence_score,
+                                       model_used=current_model.name)
                 
-                start_messages = temp_variation_prompt
+                current_variable.values[variation_id] = new_value
+
             
-            elif isinstance(current_model, OpenAIChatModel):
-
-                start_messages = [
-                    {"role": "system", "content": current_model.system_prompt},
-                    {"role": "user", "content": temp_variation_prompt},
-                ]   
-                
-            elif isinstance(current_model, MistralChatModel):
-
-                start_messages = [
-                    ChatMessage(role="system", content= current_model.system_prompt),
-                    ChatMessage(role="user", content=temp_variation_prompt)
-                ]
-
-            elif isinstance(current_model, TogetherChatModel):
-            
-                start_messages = [
-                    {"role": "system", "content": current_model.system_prompt},
-                    {"role": "user", "content": temp_variation_prompt},
-                ] 
-
-            elif isinstance(current_model, AnyscaleChatModel):
-            
-                start_messages = [
-                    {"role": "system", "content": current_model.system_prompt},
-                    {"role": "user", "content": temp_variation_prompt},
-                ]
-                
-            else:
-
-                raise ValueError("Unknow type of model")
 
             if current_variable.validator:
 
@@ -466,19 +482,31 @@ class DataGenerator:
 
                     if count > current_variable.validator.retry_number:
 
-                        new_value = Variations(id=variation_id, parent_id=parent_id, value=generated_value, error_message=new_message, confidence_score=current_confidence_score, model_used=current_model.name)
+                        new_value = Variations(id=variation_id,
+                                               parent_id=parent_id,
+                                               value=generated_value,
+                                               initial_value=generated_value,
+                                               error_message=new_message,
+                                               confidence_score=current_confidence_score,
+                                               model_used=current_model.name)
+                        
                         current_variable.values[variation_id] = new_value
                         break
                     
-                    generated_value = current_model.ask(messages=start_messages)
+                    generated_value = current_model.ask()
 
                     if isinstance(current_model, OpenAIChatModel):
                         current_confidence_score = current_model.confidence_score
                     else: 
                         current_confidence_score = {} 
 
-                    self.template.variables[variable_id_string].values[parent_id] = Variations(id=variation_id, parent_id=parent_id, value=generated_value, confidence_score=current_confidence_score, model_used=current_model.name)
-                   
+                    self.template.variables[variable_id_string].values[parent_id] = Variations(id=variation_id, 
+                                                                                                parent_id=parent_id, 
+                                                                                                value=generated_value,
+                                                                                                initial_value=generated_value,
+                                                                                                confidence_score=current_confidence_score,
+                                                                                                model_used=current_model.name)
+                    
                     function_name = current_variable.validator.function_name
                     from_notebook = current_variable.validator.from_notebook
                     additional_parameters = current_variable.validator.additional_parameters
@@ -495,55 +523,82 @@ class DataGenerator:
 
                     if isValid:
 
-                        new_value = Variations(id=variation_id, parent_id=parent_id, value=generated_value, model_used=current_model.name)
+                        new_value = Variations(id=variation_id,
+                                               parent_id=parent_id,
+                                               value=generated_value,
+                                               initial_value=generated_value,
+                                               model_used=current_model.name)
 
                         current_variable.values[variation_id] = new_value
 
                         break
 
                     else:
+                        
+                        if isinstance(current_model.user_prompt, list):
 
-                        if isinstance(current_model, OpenAIInstructModel) or isinstance(current_model, LlamaCPPModel):
+                            current_model.user_prompt.append(UserMessage(role= "assistant", content = generated_value)) 
+                            current_model.user_prompt.append(UserMessage(role= "user", content = new_message))
 
-                            start_messages = f"{start_messages}\n\nAssistant:{generated_value}\n\nUser:{new_message}"
+                        elif isinstance(current_model.user_prompt, str):
 
-                        elif isinstance(current_model, OpenAIChatModel):
+                            current_model.user_prompt = f"{current_model.user_prompt}\n\nAssistant:{generated_value}\n\nUser:{new_message}"
 
-                            start_messages.append({"role": "assistant", "content": generated_value})
-                            start_messages.append({"role": "user", "content": new_message})
-
-                        elif isinstance(current_model, MistralChatModel):
-                
-                            start_messages.append(ChatMessage(role="assistant", content=generated_value))
-                            start_messages.append(ChatMessage(role="user", content=new_message))
-                           
                         else:
-
                             raise ValueError("Unknow type of model")
+            
+
+                        current_model.ask()
 
                         count = count + 1
 
             else:
+                
+                generated_value = current_model.ask()
 
-                generated_value = current_model.ask(messages=start_messages)
-
-                if current_variable.transform_value :
-                    generated_value = self.transform_generated_value(current_variable=current_variable, value=generated_value, parent_id=parent_id)
-
-                new_value = Variations(id=variation_id, parent_id=parent_id, value=generated_value, confidence_score=current_model.confidence_score, model_used=current_model.name)
-                current_variable.values[variation_id] = new_value
-
-            last_values_list.append(generated_value)
             
             if current_variable.independent_values == False:
-                if last_values_list:
-                    last_values = "You must generate a content value that is not similar to following values:\n'''" + "\n".join(last_values_list) + "\n'''"
-                else:
-                    last_values = ""
             
-            variations[variation_id] = new_value
+                if isinstance(current_model.user_prompt, list):
+                    
+                    current_model.user_prompt.append(UserMessage(role="assistant", content=generated_value))
+                    current_model.user_prompt.append(UserMessage(role="user", content="You must generate a new answer that is not similar to the last values. No verbose."))
+                    
+                elif isinstance(current_model.user_prompt, str):
+                    
+                    current_model.user_prompt = f"{current_model.user_prompt}\n\nAssistant:{generated_value}\n\nUser:{new_message}"
+
+                else:
+
+                    raise ValueError("Unknow type of model")
+                
+
+
+            #add values to variations 
+            self.add_variation_value(id=variation_id,
+                                    variations=variations, 
+                                    variable_id_string=variable_id_string, 
+                                    current_variable=current_variable, 
+                                    generated_value=generated_value,
+                                    initial_value=generated_value,
+                                    parent_id=parent_id)
+                
+
+            variations[variation_id] = Variations(id=variation_id,
+                                               parent_id=parent_id,
+                                               value=generated_value,
+                                               initial_value=generated_value,
+                                               model_used=current_model.name)
+        
+
+            if current_variable.independent_values == True:
+                #Reinitialize user_prompt value after generation
+                current_model.user_prompt = copy_messages_obj
 
         return variations
+
+            
+
 
     def generate_evol_instruct_prompt(self, initial_prompt:str):
 
@@ -599,10 +654,6 @@ class DataGenerator:
         prompt_variables = self.extract_variable_from_string(prompt)
         prompt_fixed_variables = self.extract_variable_dict_from_string(text=self.template.prompt)
 
-        completion = self.template.completion
-        completion_variables = self.extract_variable_from_string(completion)
-        completion_fixed_variables = self.extract_variable_dict_from_string(text=self.template.completion)
-
         save_as_csv = True
 
         result = []
@@ -616,8 +667,7 @@ class DataGenerator:
                 prompt_param = {}
 
                 for variable_id_string, prompt_variation in p_param.items():
-                    if prompt_variation.id:
-                        parent_id = prompt_variation.parent_id
+
                     prompt_param[variable_id_string] = prompt_variation.value
 
                     prompt_param[f"error_message_{variable_id_string}"] = prompt_variation.error_message
@@ -625,71 +675,14 @@ class DataGenerator:
                     prompt_param[f"model_used_{variable_id_string}"] = str(prompt_variation.model_used)
 
                 initial_prompt = prompt.format(**prompt_param)
-
-                prompt_list = [initial_prompt]
-
-                if self.template.prompt_variation_number > 0:
-
-                    prompt_list = self.generate_evol_instruct_prompt(initial_prompt=initial_prompt)
-
-                for prompt_text in prompt_list[:max(self.template.prompt_variation_number,1)]:
-              
-                    completion_parameters = self.contextual_generation(prompt_text=prompt_text, 
-                                                                       completion=completion, 
-                                                                       variables=completion_variables,
-                                                                       current_variation_dict={}, 
-                                                                       fixed_variables=completion_fixed_variables,
-                                                                       parent_id=parent_id)
+    
+                if save_as_csv:
                     
-                    for c_param in completion_parameters:
-
-                        completion_param = {}
-
-                        for variable_id_string, variation in c_param.items():
-                            completion_param[variable_id_string] = variation.value
-                            completion_param[f"error_message_{variable_id_string}"] = variation.error_message
-                            completion_param[f"confidence_{variable_id_string}"] = str(variation.confidence_score)
-                            completion_param[f"model_used_{variable_id_string}"] = str(prompt_variation.model_used)
-
-                        completion_result = completion.format(**completion_param)
-
-                        if save_as_csv:
-
-                            row = {"prompt": initial_prompt, "evol_prompt": prompt_text, "completion": completion_result}
-                            row.update(prompt_param)
-                            row.update(completion_param)
-                            result.append(row)
-
-                            write_to_csv(result, output_path)
-
-        else:
-
-            prompt_list = [prompt]
-
-            for prompt_text in prompt_list[:max(self.template.prompt_variation_number,1)]:
-
-                completion_parameters = self.contextual_generation(prompt_text=prompt_text, completion=completion, variables=completion_variables, current_variation_dict={}, fixed_variables=completion_fixed_variables)
-
-                for param in completion_parameters:
-
-                    completion_param = {}
-
-                    for variable_id_string, variation in param.items():
-                        completion_param[variable_id_string] = variation.value
-                        completion_param[f"error_message_{variable_id_string}"] = variation.error_message
-                        completion_param[f"confidence_{variable_id_string}"] = str(prompt_variation.confidence_score)
-                        completion_param[f"model_used_{variable_id_string}"] = str(prompt_variation.model_used)
-
-                    completion_result = completion.format(**completion_param)
-
-                    if save_as_csv:
-
-                        row = {"prompt": prompt, "evol_prompt": prompt_text, "completion": completion_result}
-                        row.update(prompt_param)
-                        row.update(completion_param)
-                        result.append(row)
-
-                        write_to_csv(result, output_path)
+                    row = {"prompt": initial_prompt}
+                    row.update(prompt_param)
+                    result.append(row)
+                    
+                    write_to_csv(result, output_path)
 
                 
         if self.template.decontamination:
@@ -697,7 +690,7 @@ class DataGenerator:
             result_after_decontamination = self.template.decontamination.decontaminate(result)
                 
             write_to_csv(result_after_decontamination, output_decontaminated_path)
-
+    
             return result, result_after_decontamination
 
         return result, None 
