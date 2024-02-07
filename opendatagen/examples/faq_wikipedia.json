@@ -1,0 +1,41 @@
+{
+    "opendatagen": {
+            "name":"Wikipedia FAQ",
+            "description": "",
+            "prompt": "#Text:\n'''\n{text}\n'''\nQuestion:\n'''\n{question}\n'''",
+            "prompt_variation_number": 0,
+            "variables": {
+                "text": {
+                    "name": "Wikipedia content",
+                    "generation_number": 10,
+                    "get_value_from_huggingface": {
+                        "dataset_name": "20220301.en",
+                        "dataset_path": "wikipedia",
+                        "column_name": "text",
+                        "max_tokens": 1024
+                    }
+                },
+                "question": {
+                    "name": "Question",
+                    "generation_number": 2,
+                    "independent_values":false,
+                    "ensure_model_diversity": true,
+                    "models": [
+                        {
+                            "openai_chat_model": {
+                                "name": "gpt-3.5-turbo-0125",
+                                "user_prompt": [
+                                    {"role":"system", "content":"You are QuestionGPT and must write high quality question about the given text."}, 
+                                    {"role":"user", "content": "Write a question about the following text:\n'''\n{text}\n'''\n"}
+                                ],  
+                                "temperature": [0],
+                                "max_tokens": 128
+                            }
+                        }
+                    ]
+                
+                }
+
+            }
+        }
+    }
