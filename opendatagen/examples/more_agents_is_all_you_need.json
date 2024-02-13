@@ -1,0 +1,63 @@
+{
+    "opendatagen": {
+            "name":"More Agents is All you need",
+            "description": "https://arxiv.org/abs/2402.05120",
+            "prompt": "Question:\n'''\n{question}\n'''\n\nAnswer:\n'''\n{answer}\n'''",
+            "prompt_variation_number": 0,
+            "variables": {
+                "question": {
+                    "name": "Question",
+                    "generation_number": 1,
+                    "independent_values":false,
+                    "ensure_model_diversity": true,
+                    "models": [
+                        {
+                            "openai_chat_model": {
+                                "name": "gpt-3.5-turbo-0125",
+                                "user_prompt": [
+                                    {"role":"system", "content":"Write a high quality but complex question about astronomy. No verbose."}
+                                ],  
+                                "temperature": [1],
+                                "max_tokens": 128
+                            }
+                        }
+                    ]
+                
+                },
+                "answer": {
+                    "name": "Answer",
+                    "generation_number": 5,
+                    "independent_values":true,
+                    "ensure_model_diversity": true,
+                    "models": [
+                        {
+                            "openai_chat_model": {
+                                "name": "gpt-3.5-turbo-0125",
+                                "user_prompt": [
+                                    {"role":"system", "content":"Answer to the following question. Don't be too verbose"},
+                                    {"role":"assistant", "content":"{question}"}
+                                ],  
+                                "temperature": [0, 0.5, 1, 1.2],
+                                "max_tokens": 256
+                            }
+                        }
+                    ],
+                    "junction":{
+                        "delete_branch":false,
+                        "model": {
+                            "openai_chat_model": {
+                                "name": "gpt-3.5-turbo-0125",
+                                "user_prompt": [
+                                    {"role":"system", "content":"Given the values provided, rewrite the best answer."}
+                                ],
+                                "temperature": [1],
+                                "max_tokens": 256
+                            }
+                        }
+                            
+                    }
+                }
+
+            }
+        }
+    }
