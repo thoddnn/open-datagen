@@ -1,11 +1,12 @@
-You are asked to come up with a set of {number_of_prompts} diverse prompt variation of the following prompt:
+You are asked to come up with a diverse prompt variation of the following prompt:
 """
 {prompt}
 """
-These prompts generated will be given to a GPT model and we will evaluate the GPT model for completing these prompts.
+
+The prompt generated will be given to a GPT model and we will evaluate the GPT model for completing it.
 Here are the requirements:
 1. Try not to repeat the verb for each sub-topic to maximize diversity.
 2. The language used for the generated prompt also should be diverse.
 3. The type of prompt should be diverse.
 4. The prompt should be 1 to 2 sentences long.
-5. Answer as a valid JSON like {{"prompts": ["XXXX", "AAAA"]}}
+

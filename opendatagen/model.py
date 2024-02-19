@@ -4,7 +4,7 @@ from openai import OpenAI
 import numpy as np
 import os
 import json
-from opendatagen.utils import is_retryable_answer, pydantic_list_to_dict
+from opendatagen.utils import is_retryable_answer, pydantic_list_to_dict, load_file
 import requests
 from pydantic import BaseModel, validator, ValidationError, ConfigDict, Extra
 from typing import Optional, List, Dict, Union, Type
@@ -14,33 +14,43 @@ import math
 import tiktoken
 from llama_cpp import Llama
 
+
 N_RETRIES = 2
+
+class EvolMethod(Enum):
+
+    deep = "deep"
+    concretizing = "concretizing"
+    step_reasoning = "step_reasoning"
+    breath = "breath"
+    basic = "basic"
 
 class UserMessage(BaseModel):
 
     role:str
     content:str 
-    rephraser:Optional['Rephraser'] = None 
+    rephraser:Optional[List[EvolMethod]] = None 
+    
+    def rephrase(self):
+
+        rephraser_name = random.choice(self.rephraser)
+        
+        prompt = load_file(path=f"files/{rephraser_name}.txt")
+
+        d = {"prompt": self.content}
+
+        prompt = prompt.format(**d)
+
+        model = OpenAIInstructModel(user_prompt=prompt, temperature=[1])
+
+        rephrased_prompt = model.ask()
+
+        self.content = rephrased_prompt
+
     
     class Config:
         extra = 'forbid'
 
-
-class EvolMethod(Enum):
-
-    deep = "deepening.txt"
-    concretizing = "concretizing.txt"
-    step_reasoning = "step_reasoning.txt"
-    breath = "breath.txt"
-    basic = "basic.txt"
-
-class Rephraser(BaseModel):
-
-    type_of_rephrasing:EvolMethod = EvolMethod.basic
-    values:List[str]
-
-    class Config:
-        extra = 'forbid'
 
 
 class ModelName(Enum):

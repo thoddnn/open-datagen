@@ -405,6 +405,10 @@ class DataGenerator:
                             message.content = message.content.replace(old, new)
 
                         message.content = replace_with_dict(message.content, temp)
+
+                        if message.rephraser:
+                            message.rephrase()
+
                 
                 if current_variable.rag_content:
 
@@ -430,7 +434,11 @@ class DataGenerator:
                         
                         temp[target_variable_name] = value
 
-                    current_model.user_prompt = current_model.user_prompt.format(**temp)
+                    current_model.user_prompt = replace_with_dict(current_model.user_prompt, temp)  
+
+                    if message.rephraser:
+                        message.rephrase()
+
                 
                 if current_variable.rag_content:
                     
@@ -632,7 +640,7 @@ class DataGenerator:
 
 
     def generate_data(self, output_path:str, output_decontaminated_path:str=None):
-
+        
         # Extracting structures and variables from the template
         prompt = self.template.prompt
         prompt_variables = self.extract_variable_from_string(prompt)
