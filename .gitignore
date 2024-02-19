@@ -31,3 +31,5 @@ venv/
 *.json
 
 !/opendatagen/files/*.txt
+
+!/opendatagen/examples/*.json

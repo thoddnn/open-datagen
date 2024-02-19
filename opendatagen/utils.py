@@ -104,12 +104,18 @@ def find_strings_in_brackets(text):
     matches = re.findall(pattern, text)
     return matches
 
-def extract_variable_info(text):
-    # This pattern matches text enclosed in { and }
-    pattern = r"\{(.*?)\}"
+def find_strings_in_double_brackets(text):
+    # This pattern matches text enclosed in double { and }
+    pattern = r"\{\{(.*?)\}\}"
     # Find all matches
     matches = re.findall(pattern, text)
     return matches
+
+def replace_with_dict(text, data):
+    for key, value in data.items():
+        placeholder = "{{" + key + "}}"
+        text = text.replace(placeholder, value)
+    return text
 
 def snake_case_to_title_case(snake_str):
     # Split the string at underscores

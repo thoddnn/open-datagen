@@ -9,9 +9,8 @@ import requests
 from urllib.parse import quote
 from re import findall
 from typing import Dict, List, Union
-from opendatagen.utils import dict_to_string, load_file, write_to_csv, generate_context_from_json, extract_website_details, create_type_message, find_strings_in_brackets
-from opendatagen.utils import snake_case_to_title_case, title_case_to_snake_case, pydantic_list_to_dict
-from opendatagen.utils import extract_content_from_internet, clean_string
+from opendatagen.utils import dict_to_string, load_file, write_to_csv, find_strings_in_brackets, find_strings_in_double_brackets
+from opendatagen.utils import pydantic_list_to_dict, replace_with_dict
 from opendatagen.anonymizer import Anonymizer
 from opendatagen.model import OpenAIChatModel, OpenAIInstructModel, OpenAIEmbeddingModel, ModelName, MistralChatModel, LlamaCPPModel, TogetherChatModel, AnyscaleChatModel, UserMessage
 from opendatagen.template import Template, Variable, Variations, create_variable_from_name
@@ -32,11 +31,11 @@ class DataGenerator:
         self.template = template
 
     def extract_variable_from_string(self, text:str):
-        return findall(r'\{(.*?)\}', text)
+        return findall(r'\{\{(.*?)\}\}', text)
 
     def extract_variable_dict_from_string(self, text:str):
         
-        list_of_variables = findall(r'\{(.*?)\}', text)
+        list_of_variables = findall(r'\{\{(.*?)\}\}', text)
 
         result = {}
 
@@ -56,7 +55,7 @@ class DataGenerator:
 
         return anonymized_text
     
-    def contextual_generation(self, prompt_text:str, variables:list, current_variation_dict:dict, fixed_variables: Dict[str, Variable], completion:str=None, parent_id:str=None):
+    def contextual_generation(self, variables:list, current_variation_dict:dict, fixed_variables: Dict[str, Variable], completion:str=None, parent_id:str=None):
 
         # This will be the list to collect all dictionaries
         result = []
@@ -69,25 +68,11 @@ class DataGenerator:
         next_var = variables[0]
         remaining_variables = variables[1:]
 
-        if completion:
-
-            formatted_template = completion.format(**{var: current_variation_dict.get(var, f'{{{var}}}').value if hasattr(current_variation_dict.get(var, f'{{{var}}}'), 'value') else current_variation_dict.get(var, f'{{{var}}}') for var in re.findall(r'\{(.*?)\}', completion)})
-            current_completion = formatted_template.split(f'{{{next_var}}}')[0] + f'{{{next_var}}}'  
-            current_prompt = prompt_text
-
-        else:
-
-            formatted_template = prompt_text.format(**{var: current_variation_dict.get(var, f'{{{var}}}').value if hasattr(current_variation_dict.get(var, f'{{{var}}}'), 'value') else current_variation_dict.get(var, f'{{{var}}}') for var in re.findall(r'\{(.*?)\}', prompt_text)})
-            current_prompt = formatted_template.split(f'{{{next_var}}}')[0] + f'{{{next_var}}}' 
-            current_completion = None 
-
         variable = fixed_variables[next_var]
 
-        variations = self.generate_variable(prompt_text=current_prompt,
-                                                       completion_text=current_completion,
-                                                       current_variable=variable,
-                                                       variable_id_string=next_var,
-                                                       parent_id=parent_id)
+        variations = self.generate_variable(current_variable=variable,
+                                            variable_id_string=next_var,
+                                            parent_id=parent_id)
         
 
         
@@ -119,7 +104,6 @@ class DataGenerator:
             # Recursively process the remaining variables
             # and extend the all_variation_dicts list with the results
             result.extend(self.contextual_generation(
-                prompt_text=prompt_text,
                 completion=completion,
                 variables=remaining_variables,
                 current_variation_dict=updated_variation_dict,
@@ -212,7 +196,7 @@ class DataGenerator:
 
 
 
-    def generate_variable(self, prompt_text:str, current_variable:Variable, variable_id_string:str, completion_text:str=None, parent_id:str=None):
+    def generate_variable(self, current_variable:Variable, variable_id_string:str, parent_id:str=None):
         
         generation_number = current_variable.generation_number
 
@@ -384,7 +368,7 @@ class DataGenerator:
                 copy_messages_obj = copy.deepcopy(current_model.user_prompt)
                     
                 for message in current_model.user_prompt:
-                    variables_to_get = find_strings_in_brackets(text=message.content)
+                    variables_to_get = find_strings_in_double_brackets(text=message.content)
 
                     if len(variables_to_get) > 0:
                         
@@ -420,7 +404,7 @@ class DataGenerator:
                         for old, new in replace_dict.items():
                             message.content = message.content.replace(old, new)
 
-                        message.content = message.content.format(**temp)
+                        message.content = replace_with_dict(message.content, temp)
                 
                 if current_variable.rag_content:
 
@@ -431,7 +415,7 @@ class DataGenerator:
                 
                 copy_messages_obj = copy.deepcopy(current_model.user_prompt)
 
-                variables_to_get = find_strings_in_brackets(text=current_model.user_prompt)
+                variables_to_get = find_strings_in_double_brackets(text=current_model.user_prompt)
                 
                 if len(variables_to_get) > 0:
                     
@@ -660,7 +644,7 @@ class DataGenerator:
 
         if len(prompt_variables) > 0:
             # Start the recursive generation process with an empty dictionary for current variations
-            prompts_parameters = self.contextual_generation(prompt_text=prompt, variables=prompt_variables, current_variation_dict={}, fixed_variables=prompt_fixed_variables)
+            prompts_parameters = self.contextual_generation(variables=prompt_variables, current_variation_dict={}, fixed_variables=prompt_fixed_variables)
 
             for p_param in prompts_parameters:
 

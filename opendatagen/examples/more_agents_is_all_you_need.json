@@ -2,7 +2,7 @@
     "opendatagen": {
             "name":"More Agents is All you need",
             "description": "https://arxiv.org/abs/2402.05120",
-            "prompt": "Question:\n'''\n{question}\n'''\n\nAnswer:\n'''\n{answer}\n'''",
+            "prompt": "Question:\n'''\n{{question}}\n'''\n\nAnswer:\n'''\n{{answer}}\n'''",
             "prompt_variation_number": 0,
             "variables": {
                 "question": {
@@ -35,7 +35,7 @@
                                 "name": "gpt-3.5-turbo-0125",
                                 "user_prompt": [
                                     {"role":"system", "content":"Answer to the following question. Don't be too verbose"},
-                                    {"role":"assistant", "content":"{question}"}
+                                    {"role":"assistant", "content":"{{question}}"}
                                 ],  
                                 "temperature": [0, 0.5, 1, 1.2],
                                 "max_tokens": 256
@@ -43,7 +43,7 @@
                         }
                     ],
                     "junction":{
-                        "delete_branch":false,
+                        "delete_branch":true,
                         "model": {
                             "openai_chat_model": {
                                 "name": "gpt-3.5-turbo-0125",
