@@ -29,6 +29,8 @@ venv/
 *.csv
 *.ipynb
 *.json
+*.mp3
+*.jpeg
 
 !/opendatagen/files/*.txt
 

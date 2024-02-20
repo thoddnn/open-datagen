@@ -30,6 +30,8 @@ setup(
         'datasets>=2',
         'mistralai',
         'jsonschema',
-        'llama-cpp-python>=0.2.24'
+        'llama-cpp-python>=0.2.24',
+        'openai-whisper',
+        'elevenlabs==0.3.0b0'
     ]
 )

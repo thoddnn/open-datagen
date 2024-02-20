@@ -361,7 +361,7 @@ class DataGenerator:
             chosen_models.append(current_model)
 
             #Get the variables value in user_prompt from the model object 
-            if isinstance(current_model.user_prompt, list):
+            if hasattr(current_model, 'user_prompt') and isinstance(current_model.user_prompt, list):
 
                 initial_messages = pydantic_list_to_dict(lst=current_model.user_prompt, fields=['role', 'content'])
                 copy_messages = copy.deepcopy(initial_messages)
@@ -415,7 +415,7 @@ class DataGenerator:
                     rag_content = f"Here is some context that will help you:\n'''{current_variable.rag_content}\n'''"
                     current_model.user_prompt.append(UserMessage(role="user", content=rag_content))
                 
-            elif isinstance(current_model.user_prompt, str):
+            elif hasattr(current_model, 'user_prompt') and isinstance(current_model.user_prompt, str):
                 
                 copy_messages_obj = copy.deepcopy(current_model.user_prompt)
 
@@ -436,14 +436,46 @@ class DataGenerator:
 
                     current_model.user_prompt = replace_with_dict(current_model.user_prompt, temp)  
 
-                    if message.rephraser:
-                        message.rephrase()
+                    #if message.rephraser:
+                    #   message.rephrase()
 
                 
                 if current_variable.rag_content:
                     
                     rag_content = f"Here is some context that will help you:\n'''{current_variable.rag_content}\n'''"
                     current_model.user_prompt.append(UserMessage(role="user", content=rag_content))
+
+            elif hasattr(current_model, 'path') and isinstance(current_model.path, str) :
+
+                copy_messages_obj = copy.deepcopy(current_model.path)
+
+                variables_to_get = find_strings_in_double_brackets(text=current_model.path)
+                
+                if len(variables_to_get) > 0:
+                    
+                    temp = {}
+
+                    for target_variable_name in variables_to_get:
+                        
+                        value = self.retrieve_value(target_key=target_variable_name,
+                                                    current_variable_name=variable_id_string,
+                                                    parent_id=parent_id,
+                                                    get_initial_value=True)
+                        
+                        temp[target_variable_name] = value
+
+                   
+                    current_model.path = replace_with_dict(current_model.path, temp)  
+              
+                    #if message.rephraser:
+                    #   message.rephrase()
+
+                
+                if current_variable.rag_content:
+                    
+                    rag_content = f"Here is some context that will help you:\n'''{current_variable.rag_content}\n'''"
+                    current_model.path.append(UserMessage(role="user", content=rag_content))
+
 
             else: 
                 
@@ -584,13 +616,15 @@ class DataGenerator:
         
 
             if current_variable.independent_values == True:
+
                 #Reinitialize user_prompt value after generation
-                current_model.user_prompt = copy_messages_obj
+                if hasattr(current_model, 'user_prompt'):
+                    current_model.user_prompt = copy_messages_obj
+                
 
         return variations
 
             
-
 
     def generate_evol_instruct_prompt(self, initial_prompt:str):
 

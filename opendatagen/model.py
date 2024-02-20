@@ -13,7 +13,10 @@ from mistralai.client import MistralClient, ChatMessage
 import math 
 import tiktoken
 from llama_cpp import Llama
-
+import whisper
+from elevenlabs.client import ElevenLabs
+from elevenlabs import Voice, VoiceSettings, generate, play
+import uuid
 
 N_RETRIES = 2
 
@@ -66,6 +69,58 @@ class ModelName(Enum):
     LLAMA_7B = "Llama-2-7b-chat-hf"
     LLAMA_13B = "Llama-2-13b-chat-hf"
     LLAMA_70B = "Llama-2-70b-chat-hf"
+
+class WhisperModel(BaseModel):
+
+    path:str
+    name:Optional[str] = "base"
+
+    class Config:
+        extra = 'forbid'
+
+    def ask(self) -> str:
+
+        model = whisper.load_model(self.name)
+        result = model.transcribe(self.path)
+
+        text = result["text"]
+
+        return text
+
+class ElevenLabsTTSModel(BaseModel):
+
+    name:Optional[str] = "21m00Tcm4TlvDq8ikWAM"
+    user_prompt:str 
+    client:Optional[Type[ElevenLabs]] = None 
+    
+    def ask(self) -> str:
+
+        audio = generate(
+            text=self.user_prompt,
+            voice=Voice(
+                voice_id=self.name,
+                settings=VoiceSettings(stability=0.71, similarity_boost=0.5, style=0.0, use_speaker_boost=True)
+                )
+        )
+
+        # Generate a random UUID and create a filename
+        filename = f'audio_{uuid.uuid4()}.mp3'
+
+        # Save the audio data to a file with the random filename
+        with open(filename, 'wb') as audio_file:
+            audio_file.write(audio)
+
+        return filename
+    
+    def __init__(self, **data):
+
+        super().__init__(**data)
+        self.client = ElevenLabs(api_key=os.getenv("ELEVENLABS_API_KEY"))
+
+
+    class Config:
+        extra = 'forbid'
+
 
 class LlamaCPPModel(BaseModel):
 
@@ -522,7 +577,9 @@ class Model(BaseModel):
     llamacpp_instruct_model: Optional[LlamaCPPModel] = None 
     mistral_chat_model:Optional[MistralChatModel] = None
     together_chat_model:Optional[TogetherChatModel] = None  
-    anyscale_chat_model:Optional[AnyscaleChatModel] = None  
+    anyscale_chat_model:Optional[AnyscaleChatModel] = None 
+    whisper_model:Optional[WhisperModel] = None 
+    elevenlabs_tts_model:Optional[ElevenLabsTTSModel] = None  
     
     def get_model(self):
         if self.openai_chat_model is not None:
@@ -537,10 +594,13 @@ class Model(BaseModel):
             return self.together_chat_model
         elif self.anyscale_chat_model is not None:
             return self.anyscale_chat_model
+        elif self.whisper_model is not None:
+            return self.whisper_model
+        elif self.elevenlabs_tts_model is not None: 
+            return self.elevenlabs_tts_model
         else:
             return None
     
- 
 
 
 def convert_openailogprobs_to_dict(completion):
