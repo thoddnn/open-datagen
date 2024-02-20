@@ -41,6 +41,7 @@ export OPENAI_API_KEY='your_openai_api_key' #(using openai>=1.2)
 export MISTRAL_API_KEY='your_mistral_api_key'
 export TOGETHER_API_KEY='your_together_api_key'
 export ANYSCALE_API_KEY='your_anyscale_api_key'
+export ELEVENLABS_API_KEY='your_elevenlabs_api_key'
 export SERPLY_API_KEY='your_serply_api_key' #Google Search API 
 ```
 
