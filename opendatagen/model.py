@@ -4,7 +4,7 @@ from openai import OpenAI
 import numpy as np
 import os
 import json
-from opendatagen.utils import is_retryable_answer, pydantic_list_to_dict, load_file
+from opendatagen.utils import is_retryable_answer, pydantic_list_to_dict, load_file, image_to_base64_data_uri
 import requests
 from pydantic import BaseModel, validator, ValidationError, ConfigDict, Extra
 from typing import Optional, List, Dict, Union, Type
@@ -13,10 +13,19 @@ from mistralai.client import MistralClient, ChatMessage
 import math 
 import tiktoken
 from llama_cpp import Llama
+from llama_cpp.llama_chat_format import Llava15ChatHandler
 import whisper
 from elevenlabs.client import ElevenLabs
 from elevenlabs import Voice, VoiceSettings, generate, play
 import uuid
+from PIL import Image
+from PIL.PngImagePlugin import PngInfo
+import io
+from audiocraft.models import AudioGen
+from audiocraft.models import MusicGen
+from audiocraft.data.audio import audio_write
+from pydub import AudioSegment
+
 
 N_RETRIES = 2
 
@@ -70,6 +79,9 @@ class ModelName(Enum):
     LLAMA_13B = "Llama-2-13b-chat-hf"
     LLAMA_70B = "Llama-2-70b-chat-hf"
 
+
+
+
 class WhisperModel(BaseModel):
 
     path:str
@@ -117,6 +129,39 @@ class ElevenLabsTTSModel(BaseModel):
         super().__init__(**data)
         self.client = ElevenLabs(api_key=os.getenv("ELEVENLABS_API_KEY"))
 
+
+    class Config:
+        extra = 'forbid'
+
+
+class LlamaCPPITTModel(BaseModel):
+
+    path:str
+    clip_model_path:str
+    name:Optional[str] = None 
+    user_prompt:List[UserMessage] 
+
+    def ask(self) -> str:
+
+        chat_handler = Llava15ChatHandler(clip_model_path=self.clip_model_path)
+        
+        llm = Llama(
+        model_path=self.path,
+        chat_handler=chat_handler,
+        n_ctx=2048, # n_ctx should be increased to accomodate the image embedding
+        logits_all=True,# needed to make llava work
+         n_gpu_layers=-1
+        )
+
+        output = llm.create_chat_completion(messages = self.user_prompt)
+        
+        return output["choices"][0]["message"]["content"]
+
+
+    def __init__(self, **data):
+
+        super().__init__(**data)
+        self.name = self.path.split('/')[-1]
 
     class Config:
         extra = 'forbid'
@@ -406,6 +451,67 @@ class MistralChatModel(BaseModel):
         return answer
 
 
+class MusicGenModel(BaseModel):
+
+    name:str = "facebook/musicgen-melody"
+    duration:int = 4
+    user_prompt:str
+
+    class Config:
+        extra = 'forbid'
+
+    def ask(self):
+        
+        model = MusicGen.get_pretrained(self.name)
+        model.set_generation_params(duration=self.duration) 
+        descriptions = [self.user_prompt]
+        wav = model.generate(descriptions) 
+
+        for one_wav in wav:
+            
+            filename = f'music_{uuid.uuid4()}'
+
+            audio_write(filename, one_wav.cpu(), model.sample_rate, strategy="loudness", loudness_compressor=True)
+
+            sound = AudioSegment.from_wav(f'{filename}.wav')
+
+            #save to mp3
+            sound.export(f'{filename}.mp3', format="mp3")
+
+            return f'{filename}.mp3'
+        
+class AudioGenModel(BaseModel):
+
+    name:str = "facebook/audiogen-medium"
+    duration:int = 4
+    user_prompt:str
+
+    class Config:
+        extra = 'forbid'
+
+    def ask(self):
+        
+        model = AudioGen.get_pretrained(self.name)
+        model.set_generation_params(duration=self.duration) 
+        descriptions = [self.user_prompt]
+        wav = model.generate(descriptions) 
+
+        for one_wav in wav:
+            
+            filename = f'audio_{uuid.uuid4()}'
+
+            audio_write(filename, one_wav.cpu(), model.sample_rate, strategy="loudness", loudness_compressor=True)
+
+            sound = AudioSegment.from_wav(f'{filename}.wav')
+
+            #save to mp3
+            sound.export(f'{filename}.mp3', format="mp3")
+
+            return f'{filename}.mp3'
+        
+
+
+
 class OpenAIChatModel(BaseModel):
 
     name:str = "gpt-3.5-turbo-1106"
@@ -477,6 +583,63 @@ class OpenAIChatModel(BaseModel):
         answer = completion.choices[0].message.content
 
         return answer
+
+
+class OpenAITTImageModel(BaseModel):
+
+    name:str = "dall-e-3"
+    user_prompt:Optional[str] = None 
+    size:Optional[str] = "512x512"
+    quality:Optional[str] = "standard"
+    number_of_images:Optional[int] = 1  
+    client:Optional[Type[OpenAI]] = None 
+
+    class Config:
+        extra = 'forbid'
+
+    def __init__(self, **data):
+        super().__init__(**data)
+
+        self.client = OpenAI()
+        self.client.api_key = os.getenv("OPENAI_API_KEY")
+        
+    #@retry(stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
+    def ask(self) -> str:
+
+        param = {
+            "model":self.name,
+            "prompt": f"{self.user_prompt}",
+            "size":self.size,
+            "quality":self.quality,
+            "n":self.number_of_images
+        }
+        
+        completion = self.client.images.generate(**param)
+
+        image_url = completion.data[0].url
+        
+         # Generate a random UUID and create a filename
+        filename = f'image_{uuid.uuid4()}.png'
+
+        response = requests.get(image_url)
+        response.raise_for_status()  # Raises a HTTPError if the response status code is 4XX/5XX
+
+        # Create metadata
+        metadata = PngInfo()
+        metadata.add_text("image_url", image_url)
+
+        # Since we're directly using the response content, convert it to a bytes stream
+        image_bytes = io.BytesIO(response.content)
+        
+        # Open the image using Pillow
+        with Image.open(image_bytes) as img:
+            # Save the image with metadata
+            img.save(filename, "PNG", pnginfo=metadata)
+
+        uri = image_to_base64_data_uri(file_path=filename)
+
+        return uri
+
 
 
 class OpenAIInstructModel(BaseModel):
@@ -574,13 +737,17 @@ class Model(BaseModel):
 
     openai_chat_model: Optional[OpenAIChatModel] = None 
     openai_instruct_model: Optional[OpenAIInstructModel] = None 
-    llamacpp_instruct_model: Optional[LlamaCPPModel] = None 
+    openai_tti_model:Optional[OpenAITTImageModel] = None
+    llamacpp_itt_model:Optional[LlamaCPPITTModel] = None 
+    llamacpp_instruct_model: Optional[LlamaCPPModel] = None
     mistral_chat_model:Optional[MistralChatModel] = None
     together_chat_model:Optional[TogetherChatModel] = None  
     anyscale_chat_model:Optional[AnyscaleChatModel] = None 
     whisper_model:Optional[WhisperModel] = None 
-    elevenlabs_tts_model:Optional[ElevenLabsTTSModel] = None  
-    
+    elevenlabs_tts_model:Optional[ElevenLabsTTSModel] = None 
+    musicgen:Optional[MusicGenModel] = None 
+    audiogen:Optional[AudioGenModel] = None  
+
     def get_model(self):
         if self.openai_chat_model is not None:
             return self.openai_chat_model
@@ -590,6 +757,8 @@ class Model(BaseModel):
             return self.mistral_chat_model
         elif self.llamacpp_instruct_model is not None:
             return self.llamacpp_instruct_model
+        elif self.llamacpp_itt_model is not None: 
+            return self.llamacpp_itt_model
         elif self.together_chat_model is not None:
             return self.together_chat_model
         elif self.anyscale_chat_model is not None:
@@ -598,6 +767,12 @@ class Model(BaseModel):
             return self.whisper_model
         elif self.elevenlabs_tts_model is not None: 
             return self.elevenlabs_tts_model
+        elif self.openai_tti_model is not None:
+            return self.openai_tti_model
+        elif self.musicgen is not None: 
+            return self.musicgen
+        elif self.audiogen is not None: 
+            return self.audiogen
         else:
             return None
     

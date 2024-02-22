@@ -12,7 +12,7 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/thoddnn/open-datagen",
-    version='0.0.32',
+    version='0.0.33',
     packages=find_packages(),
     include_package_data=True,  
     install_requires=[
@@ -32,6 +32,9 @@ setup(
         'jsonschema',
         'llama-cpp-python>=0.2.24',
         'openai-whisper',
-        'elevenlabs==0.3.0b0'
+        'elevenlabs==0.3.0b0',
+        'Pillow',
+        'torch==2.1.0',
+        'audiocraft'
     ]
 )

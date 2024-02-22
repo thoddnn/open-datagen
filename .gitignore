@@ -31,6 +31,8 @@ venv/
 *.json
 *.mp3
 *.jpeg
+*.png
+*.wav
 
 !/opendatagen/files/*.txt
 

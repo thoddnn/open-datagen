@@ -579,7 +579,6 @@ class DataGenerator:
             else:
                 
                 generated_value = current_model.ask()
-
             
             if current_variable.independent_values == False:
             
