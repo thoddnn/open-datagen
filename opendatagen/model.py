@@ -609,11 +609,71 @@ class OpenAIChatModel(BaseModel):
         return answer
 
 
+
+class OpenAIITImageModel(BaseModel):
+
+    name:str = "dall-e-2"
+    image_path:str
+    mask_path:str
+    user_prompt:str 
+    size:Optional[str] = "1024x1024"
+    number_of_images:Optional[int] = 1  
+    client:Optional[Type[OpenAI]] = None 
+
+    class Config:
+        extra = 'forbid'
+
+    def __init__(self, **data):
+        super().__init__(**data)
+
+        self.client = OpenAI()
+        self.client.api_key = os.getenv("OPENAI_API_KEY")
+        
+    #@retry(stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
+    def ask(self) -> str:
+
+        param = {   
+            "model":self.name,
+            "image":open(self.image_path, "rb"),
+            "mask":open(self.mask_path, "rb"),
+            "size":self.size,
+            "prompt":self.user_prompt,
+            "n":self.number_of_images
+        }
+        
+        completion = self.client.images.edit(**param)
+
+        image_url = completion.data[0].url
+        
+         # Generate a random UUID and create a filename
+        filename = f'image_{uuid.uuid4()}.png'
+
+        response = requests.get(image_url)
+        response.raise_for_status()  # Raises a HTTPError if the response status code is 4XX/5XX
+
+        # Create metadata
+        metadata = PngInfo()
+        metadata.add_text("image_url", image_url)
+
+        # Since we're directly using the response content, convert it to a bytes stream
+        image_bytes = io.BytesIO(response.content)
+        
+        # Open the image using Pillow
+        with Image.open(image_bytes) as img:
+            # Save the image with metadata
+            img.save(filename, "PNG", pnginfo=metadata)
+
+        uri = image_to_base64_data_uri(file_path=filename)
+
+        return uri
+
+
+
 class OpenAITTImageModel(BaseModel):
 
     name:str = "dall-e-3"
     user_prompt:Optional[str] = None 
-    size:Optional[str] = "512x512"
+    size:Optional[str] = "1024x1024"
     quality:Optional[str] = "standard"
     number_of_images:Optional[int] = 1  
     client:Optional[Type[OpenAI]] = None 
@@ -757,48 +817,39 @@ class EmbeddingModel(BaseModel):
         else:
             return None
 
+
 class Model(BaseModel):
 
     openai_chat_model: Optional[OpenAIChatModel] = None 
     openai_instruct_model: Optional[OpenAIInstructModel] = None 
-    openai_tti_model:Optional[OpenAITTImageModel] = None
-    llamacpp_itt_model:Optional[LlamaCPPITTModel] = None 
+    openai_tti_model: Optional[OpenAITTImageModel] = None
+    openai_iti_model: Optional[OpenAIITImageModel] = None 
+    llamacpp_itt_model: Optional[LlamaCPPITTModel] = None 
     llamacpp_instruct_model: Optional[LlamaCPPModel] = None
-    mistral_chat_model:Optional[MistralChatModel] = None
-    together_chat_model:Optional[TogetherChatModel] = None  
-    anyscale_chat_model:Optional[AnyscaleChatModel] = None 
-    whisper_model:Optional[WhisperModel] = None 
-    elevenlabs_tts_model:Optional[ElevenLabsTTSModel] = None 
-    musicgen:Optional[MusicGenModel] = None 
-    audiogen:Optional[AudioGenModel] = None  
+    mistral_chat_model: Optional[MistralChatModel] = None
+    together_chat_model: Optional[TogetherChatModel] = None  
+    anyscale_chat_model: Optional[AnyscaleChatModel] = None 
+    whisper_model: Optional[WhisperModel] = None 
+    elevenlabs_tts_model: Optional[ElevenLabsTTSModel] = None 
+    musicgen: Optional[MusicGenModel] = None 
+    audiogen: Optional[AudioGenModel] = None  
 
     def get_model(self):
-        if self.openai_chat_model is not None:
-            return self.openai_chat_model
-        elif self.openai_instruct_model is not None:
-            return self.openai_instruct_model
-        elif self.mistral_chat_model is not None:
-            return self.mistral_chat_model
-        elif self.llamacpp_instruct_model is not None:
-            return self.llamacpp_instruct_model
-        elif self.llamacpp_itt_model is not None: 
-            return self.llamacpp_itt_model
-        elif self.together_chat_model is not None:
-            return self.together_chat_model
-        elif self.anyscale_chat_model is not None:
-            return self.anyscale_chat_model
-        elif self.whisper_model is not None:
-            return self.whisper_model
-        elif self.elevenlabs_tts_model is not None: 
-            return self.elevenlabs_tts_model
-        elif self.openai_tti_model is not None:
-            return self.openai_tti_model
-        elif self.musicgen is not None: 
-            return self.musicgen
-        elif self.audiogen is not None: 
-            return self.audiogen
-        else:
-            return None
+
+        model_attributes = [
+            "openai_chat_model", "openai_instruct_model", "mistral_chat_model", 
+            "openai_iti_model", "llamacpp_instruct_model", "llamacpp_itt_model", 
+            "together_chat_model", "anyscale_chat_model", "whisper_model", 
+            "elevenlabs_tts_model", "openai_tti_model", "musicgen", "audiogen"
+        ]
+
+        for attr in model_attributes:
+            model = getattr(self, attr, None)
+            if model is not None:
+                return model
+            
+        return None
+
     
 
 
