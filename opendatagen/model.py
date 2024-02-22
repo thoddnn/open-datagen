@@ -24,6 +24,7 @@ import io
 from audiocraft.models import AudioGen
 from audiocraft.models import MusicGen
 from audiocraft.data.audio import audio_write
+import torchaudio
 from pydub import AudioSegment
 from typing_extensions import TypedDict, NotRequired, Literal
 
@@ -473,6 +474,7 @@ class MusicGenModel(BaseModel):
     name:str = "facebook/musicgen-melody"
     duration:int = 4
     user_prompt:str
+    audio:Optional[str] = None 
 
     class Config:
         extra = 'forbid'
@@ -482,7 +484,12 @@ class MusicGenModel(BaseModel):
         model = MusicGen.get_pretrained(self.name)
         model.set_generation_params(duration=self.duration) 
         descriptions = [self.user_prompt]
-        wav = model.generate(descriptions) 
+        
+        if self.audio:
+            melody, sr = torchaudio.load(self.audio)
+            wav = model.generate_with_chroma(descriptions, melody[None].expand(3, -1, -1), sr)
+        else:
+            wav = model.generate(descriptions) 
 
         for one_wav in wav:
             
@@ -512,7 +519,7 @@ class AudioGenModel(BaseModel):
         model.set_generation_params(duration=self.duration) 
         descriptions = [self.user_prompt]
         wav = model.generate(descriptions) 
-
+        
         for one_wav in wav:
             
             filename = f'audio_{uuid.uuid4()}'

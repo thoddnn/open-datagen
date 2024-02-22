@@ -22,11 +22,11 @@ It offers improvements for:
 
 - Decontamination
 
-- Tree of thought 
+- Tree of thought
+
+- Multimodality (Text, Audio and Image)
 
 - (SOON) No-code dataset generation
-
-- (SOON) Multimodality 
 
 ## Installation
 
