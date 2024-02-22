@@ -25,7 +25,7 @@ from audiocraft.models import AudioGen
 from audiocraft.models import MusicGen
 from audiocraft.data.audio import audio_write
 from pydub import AudioSegment
-
+from typing_extensions import TypedDict, NotRequired, Literal
 
 N_RETRIES = 2
 
@@ -37,10 +37,25 @@ class EvolMethod(Enum):
     breath = "breath"
     basic = "basic"
 
+
+class UserContentPartText(BaseModel):
+    type: Literal["text"]
+    text: str
+
+class UserContentPartImageImageUrl(BaseModel):
+    url: str
+    detail:Optional[str] = None 
+    
+class UserContent(BaseModel):
+    type:Optional[str] = None 
+    text:Optional[str] = None 
+    image_url:Optional[UserContentPartImageImageUrl] = None 
+
+
 class UserMessage(BaseModel):
 
     role:str
-    content:str 
+    content:Union[str, List[UserContent]]
     rephraser:Optional[List[EvolMethod]] = None 
     
     def rephrase(self):
@@ -153,7 +168,9 @@ class LlamaCPPITTModel(BaseModel):
          n_gpu_layers=-1
         )
 
-        output = llm.create_chat_completion(messages = self.user_prompt)
+        messages = pydantic_list_to_dict(lst = self.user_prompt, fields=['role', 'content']) 
+        
+        output = llm.create_chat_completion(messages = messages)
         
         return output["choices"][0]["message"]["content"]
 

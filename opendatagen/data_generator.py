@@ -19,6 +19,7 @@ from mistralai.client import MistralClient
 from mistralai.models.chat_completion import ChatMessage
 import uuid
 import copy 
+from opendatagen.model import UserContent, UserContentPartText, UserContentPartImageImageUrl
 
 load_dotenv()
 
@@ -169,6 +170,63 @@ class DataGenerator:
 
 
 
+    def handle_user_prompt(self, variables_to_get, message, variable_id_string, parent_id):
+
+        if len(variables_to_get) > 0:
+            
+            temp = {}
+            replace_dict = {}
+
+            for target_variable_name in variables_to_get:
+                
+                #Manage .value and .initial_value
+                split_result = target_variable_name.split(".")
+                target_name = split_result[0]
+
+                replace_dict[target_variable_name] = target_name
+
+                try:
+                    get_initial_value = split_result[1]
+                    if get_initial_value.lower() == "value":
+                        get_initial_value = False 
+                    else:
+                        get_initial_value = True 
+
+                except IndexError:
+
+                    get_initial_value = False  
+
+                value = self.retrieve_value(target_key=target_name,
+                                            current_variable_name=variable_id_string,
+                                            parent_id=parent_id,
+                                            get_initial_value=get_initial_value)
+
+                temp[target_name] = value
+
+            for old, new in replace_dict.items():
+
+                if isinstance(message.content, str):
+
+                    message.content = message.content.replace(old, new)
+                    message.content = replace_with_dict(message.content, temp)
+
+                if isinstance(message.content, list):
+
+                    for content in message.content:
+
+                        if content.type == "image_url":
+                            
+                            content.image_url.url = content.image_url.url.replace(old, new)
+                            content.image_url.url = replace_with_dict(content.image_url.url, temp)
+
+                        elif content.type == "text":
+
+                            content.text = content.text.replace(old, new)
+                            content.text = replace_with_dict(content.text, temp)
+
+
+            if message.rephraser:
+                message.rephrase()
 
                 
     def retrieve_value(self, target_key, current_variable_name, parent_id, get_initial_value):
@@ -368,47 +426,52 @@ class DataGenerator:
                 copy_messages_obj = copy.deepcopy(current_model.user_prompt)
                     
                 for message in current_model.user_prompt:
-                    variables_to_get = find_strings_in_double_brackets(text=message.content)
 
-                    if len(variables_to_get) > 0:
-                        
-                        temp = {}
-                        replace_dict = {}
+                    if isinstance(message, str):
 
-                        for target_variable_name in variables_to_get:
-                            
-                            #Manage .value and .initial_value
-                            split_result = target_variable_name.split(".")
-                            target_name = split_result[0]
+                        variables_to_get = find_strings_in_double_brackets(text=message.content)
 
-                            replace_dict[target_variable_name] = target_name
+                    elif isinstance(message, UserMessage):
 
-                            try:
-                                get_initial_value = split_result[1]
-                                if get_initial_value.lower() == "value":
-                                    get_initial_value = False 
+                        if isinstance(message.content, str):
+
+                            variables_to_get = find_strings_in_double_brackets(text=message.content)
+
+                        elif isinstance(message.content, list):
+
+                            for content in message.content:
+
+                                if content.type == "image_url":
+
+                                    variables_to_get = find_strings_in_double_brackets(text=content.image_url.url)
+
+                                    self.handle_user_prompt(variables_to_get=variables_to_get,
+                                                            message=message,
+                                                            variable_id_string=variable_id_string,
+                                                            parent_id=parent_id)
+                                    
+                                elif content.type == "text":
+
+                                    variables_to_get = find_strings_in_double_brackets(text=content.text)
+
+                                    self.handle_user_prompt(variables_to_get=variables_to_get,
+                                                            message=message,
+                                                            variable_id_string=variable_id_string,
+                                                            parent_id=parent_id)
+                
                                 else:
-                                    get_initial_value = True 
 
-                            except IndexError:
+                                    raise ValueError("Error")
+                    
+                    else:
 
-                                get_initial_value = False  
-
-                            value = self.retrieve_value(target_key=target_name,
-                                                        current_variable_name=variable_id_string,
-                                                        parent_id=parent_id,
-                                                        get_initial_value=get_initial_value)
-
-                            temp[target_name] = value
-
-                        for old, new in replace_dict.items():
-                            message.content = message.content.replace(old, new)
-
-                        message.content = replace_with_dict(message.content, temp)
-
-                        if message.rephraser:
-                            message.rephrase()
-
+                        raise ValueError("Error")
+                    
+                    self.handle_user_prompt(variables_to_get=variables_to_get,
+                                                            message=message,
+                                                            variable_id_string=variable_id_string,
+                                                            parent_id=parent_id)
+                    
                 
                 if current_variable.rag_content:
 
@@ -579,7 +642,7 @@ class DataGenerator:
             else:
                 
                 generated_value = current_model.ask()
-            
+
             if current_variable.independent_values == False:
             
                 if isinstance(current_model.user_prompt, list):
