@@ -19,7 +19,6 @@ from mistralai.client import MistralClient
 from mistralai.models.chat_completion import ChatMessage
 import uuid
 import copy 
-from opendatagen.model import UserContent, UserContentPartText, UserContentPartImageImageUrl
 
 load_dotenv()
 
@@ -644,15 +643,17 @@ class DataGenerator:
                 generated_value = current_model.ask()
 
             if current_variable.independent_values == False:
+
+                independent_string = "You must generate a new value for the initial prompt that is not similar to the last values. No verbose."
             
                 if isinstance(current_model.user_prompt, list):
                     
                     current_model.user_prompt.append(UserMessage(role="assistant", content=generated_value))
-                    current_model.user_prompt.append(UserMessage(role="user", content="You must generate a new answer that is not similar to the last values. No verbose."))
+                    current_model.user_prompt.append(UserMessage(role="user", content=independent_string))
                     
                 elif isinstance(current_model.user_prompt, str):
                     
-                    current_model.user_prompt = f"{current_model.user_prompt}\n\nAssistant:{generated_value}\n\nUser:{new_message}"
+                    current_model.user_prompt = f"{current_model.user_prompt}\n\nAssistant:{generated_value}\n\nAssistant:{independent_string}"
 
                 else:
 
@@ -693,7 +694,7 @@ class DataGenerator:
         evol_prompt_template = load_file(path="files/evol_instruct.txt")
 
         evol_instruct_prompt = evol_prompt_template.format(number_of_prompts=str(self.template.prompt_variation_number), prompt=initial_prompt)
-
+        
         start_messages = [
                         {"role": "system", "content": "Answer as a valid JSON like {\"prompts\": [\"XXXX\", \"YYYY\"]}"},
                         {"role": "user", "content": evol_instruct_prompt},
@@ -734,16 +735,15 @@ class DataGenerator:
 
         return error_str
 
-
     def generate_data(self, output_path:str, output_decontaminated_path:str=None):
         
         # Extracting structures and variables from the template
         prompt = self.template.prompt
         prompt_variables = self.extract_variable_from_string(prompt)
-        prompt_fixed_variables = self.extract_variable_dict_from_string(text=self.template.prompt)
+        prompt_fixed_variables = self.extract_variable_dict_from_string(text=prompt)
 
         save_as_csv = True
-
+        
         result = []
 
         if len(prompt_variables) > 0:
@@ -755,7 +755,7 @@ class DataGenerator:
                 prompt_param = {}
 
                 for variable_id_string, prompt_variation in p_param.items():
-
+                        
                     prompt_param[variable_id_string] = prompt_variation.value
 
                     prompt_param[f"error_message_{variable_id_string}"] = prompt_variation.error_message

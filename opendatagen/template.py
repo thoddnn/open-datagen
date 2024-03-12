@@ -484,8 +484,6 @@ class Variable(BaseModel):
             extra = "forbid"
         )
     
-    
-
 
     def load_internet_source(self):
 
@@ -517,7 +515,7 @@ class Template(BaseModel):
     
     name:str
     description: str
-    prompt: str
+    prompt: str 
     prompt_variation_number: Optional[int] = 1
     variables: Optional[Dict[str, Variable]] = None
     source_internet: Optional[RAGInternet] = None

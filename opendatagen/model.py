@@ -39,24 +39,24 @@ class EvolMethod(Enum):
     basic = "basic"
 
 
-class UserContentPartText(BaseModel):
-    type: Literal["text"]
+class TextContent(BaseModel):
+    type: Literal['text']
     text: str
 
-class UserContentPartImageImageUrl(BaseModel):
+class ImageUrlContent(BaseModel):
     url: str
-    detail:Optional[str] = None 
-    
-class UserContent(BaseModel):
-    type:Optional[str] = None 
-    text:Optional[str] = None 
-    image_url:Optional[UserContentPartImageImageUrl] = None 
 
+class ImageUrl(BaseModel):
+    type: Literal['image_url']
+    image_url: ImageUrlContent
+
+# Define a Union type for the different content types
+Content = Union[TextContent, ImageUrl]
 
 class UserMessage(BaseModel):
 
-    role:str
-    content:Union[str, List[UserContent]]
+    role: Literal['user', 'assistant', 'system']
+    content: Union[List[Content], str]  
     rephraser:Optional[List[EvolMethod]] = None 
     
     def rephrase(self):
@@ -119,9 +119,10 @@ class ElevenLabsTTSModel(BaseModel):
 
     name:Optional[str] = "21m00Tcm4TlvDq8ikWAM"
     user_prompt:str 
-    client:Optional[Type[ElevenLabs]] = None 
     
     def ask(self) -> str:
+
+        client = ElevenLabs(api_key=os.getenv("ELEVENLABS_API_KEY"))
 
         audio = generate(
             text=self.user_prompt,
@@ -140,12 +141,6 @@ class ElevenLabsTTSModel(BaseModel):
 
         return filename
     
-    def __init__(self, **data):
-
-        super().__init__(**data)
-        self.client = ElevenLabs(api_key=os.getenv("ELEVENLABS_API_KEY"))
-
-
     class Config:
         extra = 'forbid'
 
@@ -258,21 +253,20 @@ class AnyscaleChatModel(BaseModel):
     stop:Optional[List[str]] = ["</s>", "[/INST]"] 
     presence_penalty: Optional[float] = 0
     frequency_penalty: Optional[float] = 0 
-    client:Optional[Type[OpenAI]] = None 
+    apikey:Optional[str] = None 
     logprobs:Optional[bool] = False 
     confidence_score:Optional[float] = None
     
-    def __init__(self, **data):
-
-        super().__init__(**data)
-        self.client = OpenAI(api_key=os.getenv("ANYSCALE_API_KEY"), base_url='https://api.endpoints.anyscale.com/v1',)
-
     class Config:
         extra = 'forbid'
 
 
     @retry(retry=retry_if_result(is_retryable_answer), stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
     def ask(self) -> str:
+
+        api_key = self.apikey if self.apikey else os.getenv("ANYSCALE_API_KEY")
+        
+        client = OpenAI(api_key=api_key, base_url='https://api.endpoints.anyscale.com/v1')
         
         messages = pydantic_list_to_dict(lst = self.user_prompt, fields=['role', 'content']) 
 
@@ -296,7 +290,7 @@ class AnyscaleChatModel(BaseModel):
         if self.json_mode and self.json_schema:
             param["response_format"] = {"type": "json_object", "schema": self.json_schema}
 
-        completion = self.client.chat.completions.create(**param)
+        completion = client.chat.completions.create(**param)
         
         if self.logprobs:
             self.confidence_score = get_confidence_score(completion=completion)
@@ -318,7 +312,6 @@ class TogetherChatModel(BaseModel):
     stop:Optional[List[str]] = ["</s>", "[/INST]"] 
     presence_penalty: Optional[float] = 0
     frequency_penalty: Optional[float] = 0 
-    client:Optional[Type[OpenAI]] = None 
     logprobs:Optional[bool] = False 
     confidence_score:Optional[float] = None
     
@@ -333,6 +326,10 @@ class TogetherChatModel(BaseModel):
 
     @retry(retry=retry_if_result(is_retryable_answer), stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
     def ask(self) -> str:
+
+        api_key = self.apikey if self.apikey else os.getenv("TOGETHER_API_KEY")
+        
+        client = OpenAI(api_key=api_key, base_url='https://api.together.xyz')
 
         messages = pydantic_list_to_dict(lst = self.user_prompt, fields=['role', 'content']) 
         
@@ -356,7 +353,7 @@ class TogetherChatModel(BaseModel):
         if self.json_mode:
             param["response_format"] = {"type": "json_object"}
 
-        completion = self.client.chat.completions.create(**param)
+        completion = client.chat.completions.create(**param)
 
         if self.logprobs:
             self.confidence_score = get_confidence_score(completion=completion)
@@ -379,13 +376,7 @@ class TogetherInstructModel(BaseModel):
     stop:Optional[List[str]] = None 
     presence_penalty: Optional[float] = 0
     frequency_penalty: Optional[float] = 0 
-    client:Optional[Type[OpenAI]] = None 
     confidence_score:Optional[float] = None 
-
-    def __init__(self, **data):
-
-        super().__init__(**data)
-        self.client = OpenAI(api_key=os.getenv("TOGETHER_API_KEY"), base_url='https://api.together.xyz',)
 
     class Config:
         extra = 'forbid'
@@ -393,6 +384,11 @@ class TogetherInstructModel(BaseModel):
     
     @retry(stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
     def ask(self) -> str:
+
+
+        api_key = self.apikey if self.apikey else os.getenv("TOGETHER_API_KEY")
+        
+        client = OpenAI(api_key=api_key, base_url='https://api.together.xyz')
 
         param = {
 
@@ -412,7 +408,7 @@ class TogetherInstructModel(BaseModel):
             param["max_tokens"] = self.max_tokens
 
 
-        completion = self.client.completions.create(**param)
+        completion = client.completions.create(**param)
 
         answer = completion.choices[0].text 
 
@@ -428,20 +424,18 @@ class MistralChatModel(BaseModel):
     random_seed:Optional[int] = None 
     top_p:Optional[float] = 1 
     safe_mode:Optional[bool] = False 
-    client:Optional[Type[MistralClient]] = None 
     confidence_score:Optional[float] = None 
+    apikey:Optional[str] = None 
     
-    def __init__(self, **data):
-        
-        super().__init__(**data)
-        api_key = os.environ["MISTRAL_API_KEY"]
-        self.client = MistralClient(api_key=api_key)
-
     class Config:
         extra = 'forbid'
     
     @retry(stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
     def ask(self) -> str:
+
+        api_key = self.apikey if self.apikey else os.getenv("MISTRAL_API_KEY")
+        
+        client = MistralClient(api_key=api_key)
 
         messages = [ChatMessage(role=msg.role, content=msg.content) for msg in self.user_prompt]
                          
@@ -462,7 +456,7 @@ class MistralChatModel(BaseModel):
         if self.random_seed:
             param["random_seed"] = self.random_seed
 
-        chat_response = self.client.chat(**param)
+        chat_response = client.chat(**param)
 
         answer = chat_response.choices[0].message.content
 
@@ -550,22 +544,22 @@ class OpenAIChatModel(BaseModel):
     stop:Optional[List[str]] = None 
     presence_penalty: Optional[float] = 0
     frequency_penalty: Optional[float] = 0 
-    client:Optional[Type[OpenAI]] = None 
     logprobs:Optional[bool] = False 
     confidence_score:Optional[float] = None
-    
-    def __init__(self, **data):
-        super().__init__(**data)
-        
-        self.client = OpenAI()
-        self.client.api_key = os.getenv("OPENAI_API_KEY")
+    apikey:Optional[str] = None 
 
     class Config:
         extra = 'forbid'
 
-    
     @retry(retry=retry_if_result(is_retryable_answer), stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
     def ask(self) -> str:
+
+        client = OpenAI()
+        
+        if self.apikey:
+            client.api_key = self.apikey
+        else:
+            client.api_key = os.getenv("OPENAI_API_KEY")
 
         messages = pydantic_list_to_dict(lst = self.user_prompt, fields=['role', 'content']) 
 
@@ -617,20 +611,21 @@ class OpenAIITImageModel(BaseModel):
     mask_path:str
     user_prompt:str 
     size:Optional[str] = "1024x1024"
-    number_of_images:Optional[int] = 1  
-    client:Optional[Type[OpenAI]] = None 
+    number_of_images:Optional[int] = 1 
+    apikey:Optional[str] = None  
 
     class Config:
         extra = 'forbid'
-
-    def __init__(self, **data):
-        super().__init__(**data)
-
-        self.client = OpenAI()
-        self.client.api_key = os.getenv("OPENAI_API_KEY")
         
     #@retry(stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
     def ask(self) -> str:
+
+        client = OpenAI()
+        
+        if self.apikey:
+            client.api_key = self.apikey
+        else:
+            client.api_key = os.getenv("OPENAI_API_KEY")
 
         param = {   
             "model":self.name,
@@ -676,19 +671,20 @@ class OpenAITTImageModel(BaseModel):
     size:Optional[str] = "1024x1024"
     quality:Optional[str] = "standard"
     number_of_images:Optional[int] = 1  
-    client:Optional[Type[OpenAI]] = None 
+    apikey:Optional[str] = None 
 
     class Config:
         extra = 'forbid'
 
-    def __init__(self, **data):
-        super().__init__(**data)
-
-        self.client = OpenAI()
-        self.client.api_key = os.getenv("OPENAI_API_KEY")
-        
-    #@retry(stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
+    @retry(stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
     def ask(self) -> str:
+
+        client = OpenAI()
+        
+        if self.apikey:
+            client.api_key = self.apikey
+        else:
+            client.api_key = os.getenv("OPENAI_API_KEY")
 
         param = {
             "model":self.name,
@@ -739,20 +735,21 @@ class OpenAIInstructModel(BaseModel):
     stop:Optional[List[str]] = None 
     presence_penalty: Optional[float] = 0
     frequency_penalty: Optional[float] = 0 
-    client:Optional[Type[OpenAI]] = None 
     confidence_score:Optional[float] = None
+    apikey:Optional[str] = None 
 
     class Config:
         extra = 'forbid'
 
-    def __init__(self, **data):
-        super().__init__(**data)
-
-        self.client = OpenAI()
-        self.client.api_key = os.getenv("OPENAI_API_KEY")
-        
     @retry(stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
     def ask(self) -> str:
+
+        client = OpenAI()
+        
+        if self.apikey:
+            client.api_key = self.apikey
+        else:
+            client.api_key = os.getenv("OPENAI_API_KEY")
 
         param = {
             
@@ -777,8 +774,8 @@ class OpenAIInstructModel(BaseModel):
         if self.seed:
             param["seed"] = self.seed
 
-        completion = self.client.completions.create(**param)
-
+        completion = client.completions.create(**param)
+        
         answer = completion.choices[0].text 
 
         return answer
@@ -786,21 +783,21 @@ class OpenAIInstructModel(BaseModel):
 
 class OpenAIEmbeddingModel(BaseModel):
 
-    client:Optional[Type[OpenAI]] = None 
     name:str = "text-embedding-ada-002"
 
     class Config:
         extra = 'forbid'
-    
-    def __init__(self, **data):
-        super().__init__(**data)
-
-        self.client = OpenAI()
-        self.client.api_key = os.getenv("OPENAI_API_KEY")
 
     def create_embedding(self, prompt:str):
+
+        client = OpenAI()
         
-        embedding = self.client.embeddings.create(
+        if self.apikey:
+            client.api_key = self.apikey
+        else:
+            client.api_key = os.getenv("OPENAI_API_KEY")
+        
+        embedding = client.embeddings.create(
             model=self.name,
             input=prompt
         )
@@ -877,7 +874,7 @@ def extract_keyword_from_text(text:str):
             }
         },
         "required": ["keywords"]
-    }
+    }   
 
     system_prompt = f"Identify and extract all the important keyphrases from the given text return a valid JSON complying with this schema:\n{str(schema)}"
 
