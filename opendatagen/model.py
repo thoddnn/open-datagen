@@ -1,5 +1,5 @@
 from enum import Enum
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_result
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_result, retry_if_exception_type
 from openai import OpenAI
 import numpy as np
 import os
@@ -318,12 +318,12 @@ class TogetherChatModel(BaseModel):
     def __init__(self, **data):
 
         super().__init__(**data)
-        self.client = OpenAI(api_key=os.getenv("TOGETHER_API_KEY"), base_url='https://api.together.xyz',)
+
 
     class Config:
         extra = 'forbid'
 
-
+    
     @retry(retry=retry_if_result(is_retryable_answer), stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
     def ask(self) -> str:
 
@@ -547,7 +547,7 @@ class OpenAIChatModel(BaseModel):
     logprobs:Optional[bool] = False 
     confidence_score:Optional[float] = None
     apikey:Optional[str] = None 
-
+    
     class Config:
         extra = 'forbid'
 
@@ -591,15 +591,15 @@ class OpenAIChatModel(BaseModel):
             param["response_format"] = {"type": "json_object"}
 
         if self.seed:
-            param["seed"] = self.seed
+            param["seed"] = self.seed   
         
-        completion = self.client.chat.completions.create(**param)
+        completion = client.chat.completions.create(**param)
 
         if self.logprobs:
             self.confidence_score = get_confidence_score(completion=completion)
 
         answer = completion.choices[0].message.content
-
+        
         return answer
 
 
@@ -636,7 +636,7 @@ class OpenAIITImageModel(BaseModel):
             "n":self.number_of_images
         }
         
-        completion = self.client.images.edit(**param)
+        completion = client.images.edit(**param)
 
         image_url = completion.data[0].url
         
@@ -676,49 +676,52 @@ class OpenAITTImageModel(BaseModel):
     class Config:
         extra = 'forbid'
 
-    @retry(stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
+    @retry(stop=stop_after_attempt(N_RETRIES),
+        wait=wait_exponential(multiplier=1, min=4, max=60),
+        retry=retry_if_exception_type(requests.exceptions.RequestException),
+        reraise=True)
+    
     def ask(self) -> str:
-
-        client = OpenAI()
         
+        client = OpenAI()
+
         if self.apikey:
             client.api_key = self.apikey
         else:
             client.api_key = os.getenv("OPENAI_API_KEY")
 
         param = {
-            "model":self.name,
+            "model": self.name,
             "prompt": f"{self.user_prompt}",
-            "size":self.size,
-            "quality":self.quality,
-            "n":self.number_of_images
+            "size": self.size,
+            "quality": self.quality,
+            "n": self.number_of_images
         }
+
+        try:
+
+            completion = client.images.generate(**param)
+            image_url = completion.data[0].url
+            # Generate a random UUID and create a filename
+            filename = f'image_{uuid.uuid4()}.png'
+            response = requests.get(image_url)
+            response.raise_for_status()  # Raises a HTTPError if the response status code is 4XX/5XX
+            # Create metadata
+            metadata = PngInfo()
+            metadata.add_text("image_url", image_url)
+            # Since we're directly using the response content, convert it to a bytes stream
+            image_bytes = io.BytesIO(response.content)
+            # Open the image using Pillow
+            with Image.open(image_bytes) as img:
+                # Save the image with metadata
+                img.save(filename, "PNG", pnginfo=metadata)
+            uri = image_to_base64_data_uri(file_path=filename)
+            return uri
         
-        completion = self.client.images.generate(**param)
+        except requests.exceptions.RequestException as e:
 
-        image_url = completion.data[0].url
-        
-         # Generate a random UUID and create a filename
-        filename = f'image_{uuid.uuid4()}.png'
-
-        response = requests.get(image_url)
-        response.raise_for_status()  # Raises a HTTPError if the response status code is 4XX/5XX
-
-        # Create metadata
-        metadata = PngInfo()
-        metadata.add_text("image_url", image_url)
-
-        # Since we're directly using the response content, convert it to a bytes stream
-        image_bytes = io.BytesIO(response.content)
-        
-        # Open the image using Pillow
-        with Image.open(image_bytes) as img:
-            # Save the image with metadata
-            img.save(filename, "PNG", pnginfo=metadata)
-
-        uri = image_to_base64_data_uri(file_path=filename)
-
-        return uri
+            print(f"Error occurred: {str(e)}")
+            raise
 
 
 

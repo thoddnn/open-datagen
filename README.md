@@ -26,7 +26,10 @@ It offers improvements for:
 
 - Multimodality (Text, Audio and Image)
 
-- (SOON) No-code dataset generation
+- No-code dataset generation ⤵️⤵️⤵️
+
+[![Watch the video](https://img.youtube.com/vi/Dp6jvJBuUA0/0.jpg)](https://www.youtube.com/watch?v=Dp6jvJBuUA0)
+  
 
 ## Installation
 

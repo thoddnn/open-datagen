@@ -388,7 +388,7 @@ class DataGenerator:
         rag_content = ""
         chosen_models = []
         independent_messages = None 
-
+        
         current_variable = self.template.variables[variable_id_string]
 
         if current_variable.source_localfile:
