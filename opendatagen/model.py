@@ -27,6 +27,9 @@ from audiocraft.data.audio import audio_write
 import torchaudio
 from pydub import AudioSegment
 from typing_extensions import TypedDict, NotRequired, Literal
+import anthropic
+from transformers import AutoProcessor, BarkModel
+import scipy
 
 N_RETRIES = 2
 
@@ -115,6 +118,35 @@ class WhisperModel(BaseModel):
 
         return text
 
+
+class BarkTTSModel(BaseModel):
+
+    name:Optional[str] = "suno/bark"
+    speaker:Optional[str] = "v2/en_speaker_6"
+    user_prompt:str 
+
+    def ask(self) -> str:
+
+        processor = AutoProcessor.from_pretrained(self.name)
+        model = BarkModel.from_pretrained(self.name)
+
+        voice_preset = self.speaker
+
+        inputs = processor(self.user_prompt, voice_preset=voice_preset)
+
+        audio_array = model.generate(**inputs)
+        audio_array = audio_array.cpu().numpy().squeeze()
+
+        sample_rate = model.generation_config.sample_rate
+
+        # Generate a random UUID and create a filename
+        filename = f'audio_{uuid.uuid4()}.mp3'
+
+        scipy.io.wavfile.write(filename, rate=sample_rate, data=audio_array)
+
+        return filename
+
+    
 class ElevenLabsTTSModel(BaseModel):
 
     name:Optional[str] = "21m00Tcm4TlvDq8ikWAM"
@@ -528,6 +560,76 @@ class AudioGenModel(BaseModel):
             return f'{filename}.mp3'
         
 
+class ClaudeChatModel(BaseModel):
+
+    name:str = "claude-3-sonnet-20240229"
+    user_prompt:Optional[List[UserMessage]] = None 
+    max_tokens:Optional[int] = 256
+    temperature:Optional[List[float]] = [1]
+    json_mode:Optional[bool] = False 
+    seed:Optional[int] = None 
+    tools:Optional[list] = None 
+    top_p:Optional[float] = 1 
+    note:Optional[List[str]] = None 
+    stop:Optional[List[str]] = None 
+    presence_penalty: Optional[float] = 0
+    frequency_penalty: Optional[float] = 0 
+    logprobs:Optional[bool] = False 
+    confidence_score:Optional[float] = None
+    apikey:Optional[str] = None 
+    
+    class Config:
+        extra = 'forbid'
+
+    @retry(retry=retry_if_result(is_retryable_answer), stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
+    def ask(self) -> str:
+
+        client = anthropic.Client()
+        
+        if self.apikey:
+            client.api_key = self.apikey
+        else:
+            client.api_key = os.getenv("OPENAI_API_KEY")
+
+        messages = pydantic_list_to_dict(lst = self.user_prompt, fields=['role', 'content']) 
+
+        param = {
+
+            "model":self.name,
+            "temperature": random.choice(self.temperature),
+            "messages": messages,
+
+        }
+
+        if self.stop:
+            param["stop_sequences"] = self.stop
+
+        if self.top_p:
+            param["top_p"] = self.top_p
+        
+        if self.tools:
+            param["tools"] = self.tools
+        
+        if self.max_tokens:
+            param["max_tokens"] = self.max_tokens
+
+        if self.max_tokens:
+            param["max_tokens"] = self.max_tokens
+
+        if self.json_mode:
+            param["response_format"] = {"type": "json_object"}
+
+        if self.seed:
+            param["seed"] = self.seed   
+        
+        completion = client.chat.completions.create(**param)
+
+        if self.logprobs:
+            self.confidence_score = get_confidence_score(completion=completion)
+
+        answer = completion.choices[0].message.content
+        
+        return answer
 
 
 class OpenAIChatModel(BaseModel):

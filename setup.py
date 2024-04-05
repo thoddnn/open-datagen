@@ -35,6 +35,8 @@ setup(
         'elevenlabs==0.3.0b0',
         'Pillow',
         'torch==2.1.0',
-        'audiocraft'
+        'audiocraft',
+        'anthropic',
+        'bark @ git+https://github.com/suno-ai/bark.git'
     ]
 )
