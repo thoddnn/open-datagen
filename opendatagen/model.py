@@ -120,10 +120,10 @@ class WhisperModel(BaseModel):
 
 
 class BarkTTSModel(BaseModel):
-
+    
     name:Optional[str] = "suno/bark"
     speaker:Optional[str] = "v2/en_speaker_6"
-    user_prompt:str 
+    user_prompt:str
 
     def ask(self) -> str:
 
@@ -210,6 +210,68 @@ class LlamaCPPITTModel(BaseModel):
 
     class Config:
         extra = 'forbid'
+
+class LlamaCPPChatModel(BaseModel):
+
+    path:str 
+    name:Optional[str] = None 
+    user_prompt:Optional[List[UserMessage]] = None 
+    use_gpu:Optional[bool] = True 
+    max_tokens:Optional[int] = 256
+    temperature:Optional[List[float]] = [1]
+    json_mode:Optional[bool] = False 
+    tools:Optional[list] = None 
+    stop:Optional[List[str]] = None 
+    top_p:Optional[float] = 0.95
+    min_p:Optional[float] = 0.05
+    chat_format:Optional[str]= "chatml" 
+
+    class Config:
+        extra = 'forbid'
+
+    @retry(retry=retry_if_result(is_retryable_answer), stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
+    def ask(self) -> str:
+            
+        param_llm = {
+            "verbose": False
+        }
+
+        if self.use_gpu:
+            param_llm["n_gpu_layers"] = -1
+
+        
+        if self.tools:
+            param_llm["chat_format"] = "chatml-function-calling"
+        else:
+            param_llm["chat_format"] = self.chat_format
+
+        #llm = Llama(model_path=self.path, verbose=False, n_gpu_layers=-1)
+        llm = Llama(model_path=self.path, **param_llm)
+        
+        param_completion = {
+            "messages": [message.model_dump() for message in self.user_prompt],
+            "max_tokens": self.max_tokens,
+            "temperature": random.choice(self.temperature),
+        }
+            
+        if self.stop: 
+            param_completion["stop"] = self.stop
+
+        if self.top_p:
+            param_completion["top_p"] = self.top_p
+
+        if self.min_p:
+            param_completion["min_p"] = self.min_p
+
+        if self.json_mode:
+            param_completion["response_format"] = {"type": "json_object"}
+
+        if self.tools:
+            param_completion["functions"] = self.tools
+
+        output = llm.create_chat_completion(**param_completion)
+        
+        return output["choices"][0]["message"]["content"]
 
 
 class LlamaCPPModel(BaseModel):
@@ -923,11 +985,14 @@ class EmbeddingModel(BaseModel):
 class Model(BaseModel):
 
     openai_chat_model: Optional[OpenAIChatModel] = None 
+    claude_chat_model:Optional[ClaudeChatModel] = None 
+    suno_tts_model:Optional[BarkTTSModel] = None
     openai_instruct_model: Optional[OpenAIInstructModel] = None 
     openai_tti_model: Optional[OpenAITTImageModel] = None
     openai_iti_model: Optional[OpenAIITImageModel] = None 
     llamacpp_itt_model: Optional[LlamaCPPITTModel] = None 
     llamacpp_instruct_model: Optional[LlamaCPPModel] = None
+    llamacpp_chat_model:Optional[LlamaCPPChatModel] = None 
     mistral_chat_model: Optional[MistralChatModel] = None
     together_chat_model: Optional[TogetherChatModel] = None  
     anyscale_chat_model: Optional[AnyscaleChatModel] = None 
@@ -942,7 +1007,8 @@ class Model(BaseModel):
             "openai_chat_model", "openai_instruct_model", "mistral_chat_model", 
             "openai_iti_model", "llamacpp_instruct_model", "llamacpp_itt_model", 
             "together_chat_model", "anyscale_chat_model", "whisper_model", 
-            "elevenlabs_tts_model", "openai_tti_model", "musicgen", "audiogen"
+            "elevenlabs_tts_model", "openai_tti_model", "musicgen", "audiogen",
+            "claude_chat_model", "suno_tts_model", "llamacpp_chat_model"
         ]
 
         for attr in model_attributes:
@@ -952,7 +1018,6 @@ class Model(BaseModel):
             
         return None
 
-    
 
 
 def convert_openailogprobs_to_dict(completion):

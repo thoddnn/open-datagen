@@ -735,50 +735,41 @@ class DataGenerator:
 
         return error_str
 
-    def generate_data(self, output_path:str, output_decontaminated_path:str=None):
-        
+    def generate_data(self):
         # Extracting structures and variables from the template
         prompt = self.template.prompt
         prompt_variables = self.extract_variable_from_string(prompt)
         prompt_fixed_variables = self.extract_variable_dict_from_string(text=prompt)
 
-        save_as_csv = True
-        
         result = []
 
-        if len(prompt_variables) > 0:
+        if prompt_variables:
             # Start the recursive generation process with an empty dictionary for current variations
-            prompts_parameters = self.contextual_generation(variables=prompt_variables, current_variation_dict={}, fixed_variables=prompt_fixed_variables)
+            prompts_parameters = self.contextual_generation(
+                variables=prompt_variables, 
+                current_variation_dict={}, 
+                fixed_variables=prompt_fixed_variables
+            )
 
-            for p_param in prompts_parameters:
-
+            # Iterate over each set of parameters with indices for coordinates
+            for x, p_param in enumerate(prompts_parameters):
                 prompt_param = {}
 
-                for variable_id_string, prompt_variation in p_param.items():
-                        
-                    prompt_param[variable_id_string] = prompt_variation.value
+                for y, (variable_id_string, prompt_variation) in enumerate(p_param.items()):
+                    prompt_param[variable_id_string] = {
+                        "value": prompt_variation.value,
+                        "errorMessage": prompt_variation.error_message,
+                        "modelUsed": str(prompt_variation.model_used),
+                        "confidenceScore": prompt_variation.confidence_score,
+                        "coordinates": {"x": x, "y": y}  # Add coordinates here
+                    }
 
-                    prompt_param[f"error_message_{variable_id_string}"] = prompt_variation.error_message
-                    prompt_param[f"confidence_{variable_id_string}"] = str(prompt_variation.confidence_score)
-                    prompt_param[f"model_used_{variable_id_string}"] = str(prompt_variation.model_used)
+                result.append(prompt_param)
 
-                initial_prompt = prompt.format(**prompt_param)
-    
-                if save_as_csv:
-                    
-                    row = {"prompt": initial_prompt}
-                    row.update(prompt_param)
-                    result.append(row)
-                    
-                    write_to_csv(result, output_path)
+        # Optionally, uncomment and modify the path in the next line to write to a JSON file.
+        # with open(output_path, 'w') as json_file:
+        #    json.dump(result, json_file, indent=2)
 
-                
-        if self.template.decontamination:
+        return result
 
-            result_after_decontamination = self.template.decontamination.decontaminate(result)
-                
-            write_to_csv(result_after_decontamination, output_decontaminated_path)
-    
-            return result, result_after_decontamination
 
-        return result, None 

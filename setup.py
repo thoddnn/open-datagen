@@ -8,11 +8,11 @@ setup(
     name='opendatagen',
     author="Thomas DORDONNE",
     author_email="dordonne.thomas@gmail.com",
-    description="Data preparation system to build controllable AI system",
+    description="Synthetic data generation to improve AI and humans",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/thoddnn/open-datagen",
-    version='0.0.35',
+    version='0.0.4',
     packages=find_packages(),
     include_package_data=True,  
     install_requires=[

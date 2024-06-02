@@ -34,6 +34,8 @@ venv/
 *.png
 *.wav
 
+*agent_ui.py
+
 !/opendatagen/files/*.txt
 
 !/opendatagen/examples/*.json

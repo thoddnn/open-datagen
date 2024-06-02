@@ -159,8 +159,8 @@ class DataAgent:
     ]
 
     client = OpenAI()
-    #gpt-4-1106-preview
-    def __init__(self, model_name="gpt-4-1106-preview"):
+    
+    def __init__(self, model_name="gpt-4-turbo-2024-04-09"):
         self.model_name = model_name
         self.client.api_key = os.environ.get("OPENAI_API_KEY")
 
@@ -574,21 +574,26 @@ class DataAgent:
                 function_name = completion.choices[0].message.function_call.name
                 
                 result = self.function_to_call(parameters, function_name)
-
-                #messages.append({"role":"assistant", "content": answer})
-                messages.append({"role":"user", "content":result})
+                
+                messages.append({"role":"assistant", "content":result})
+                
+                return messages
 
             elif completion.choices[0].finish_reason == "stop":
                 
-                print(completion.choices[0].message.content)
-                print("END OF CONVERSATION")
-                break
+                result = completion.choices[0].message.content
+
+                messages.append({"role":"assistant", "content":result})
+                
+                return messages
 
             else:
 
-                print(completion.choices[0].message.content)
-                print("END OF CONVERSATION")
-                break 
+                result = completion.choices[0].message.content
+
+                messages.append({"role":"assistant", "content":result})
+                
+                return messages
 
     def indices_to_ignore(self, dataframe, rows_to_keep):
         """
