@@ -26,12 +26,15 @@ It offers improvements for:
 
 - Multimodality (Text, Audio and Image)
 
-- No-code dataset generation ⤵️⤵️⤵️
+- No-code dataset generation with the Open DataGen UI ⤵️⤵️⤵️
 
 [![Watch the video](https://img.youtube.com/vi/Dp6jvJBuUA0/0.jpg)](https://www.youtube.com/watch?v=Dp6jvJBuUA0)
-  
+
 
 ## Installation
+```bash
+conda create -n opendataenv python=3.9.6
+```
 
 ```bash
 pip install --upgrade opendatagen
