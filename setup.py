@@ -34,7 +34,7 @@ setup(
         'openai-whisper',
         'elevenlabs==0.3.0b0',
         'Pillow',
-        'torch==2.1.0',
+        'torch>=2.2.0',
         'audiocraft',
         'anthropic',
         'bark @ git+https://github.com/suno-ai/bark.git'
