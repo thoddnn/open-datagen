@@ -221,6 +221,7 @@ class LlamaCPPChatModel(BaseModel):
     temperature:Optional[List[float]] = [1]
     json_mode:Optional[bool] = False 
     tools:Optional[list] = None 
+    tool_choice:Optional[str] = None 
     stop:Optional[List[str]] = None 
     top_p:Optional[float] = 0.95
     min_p:Optional[float] = 0.05
@@ -229,23 +230,20 @@ class LlamaCPPChatModel(BaseModel):
     class Config:
         extra = 'forbid'
 
-    @retry(retry=retry_if_result(is_retryable_answer), stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
-    def ask(self) -> str:
-            
+    #@retry(retry=retry_if_result(is_retryable_answer), stop=stop_after_attempt(N_RETRIES), wait=wait_exponential(multiplier=1, min=4, max=60))
+    def ask(self):
+
         param_llm = {
-            "verbose": False
+            "verbose": False,
+            "n_ctx": self.max_tokens
         }
 
         if self.use_gpu:
             param_llm["n_gpu_layers"] = -1
 
-        
-        if self.tools:
-            param_llm["chat_format"] = "chatml-function-calling"
-        else:
+        if self.chat_format:
             param_llm["chat_format"] = self.chat_format
 
-        #llm = Llama(model_path=self.path, verbose=False, n_gpu_layers=-1)
         llm = Llama(model_path=self.path, **param_llm)
         
         param_completion = {
@@ -269,10 +267,9 @@ class LlamaCPPChatModel(BaseModel):
         if self.tools:
             param_completion["functions"] = self.tools
 
-        output = llm.create_chat_completion(**param_completion)
+        output = self.llm.create_chat_completion_openai_v1(**param_completion)
         
-        return output["choices"][0]["message"]["content"]
-
+        return output
 
 class LlamaCPPModel(BaseModel):
 
